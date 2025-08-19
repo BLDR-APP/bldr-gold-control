@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,19 +13,94 @@ import {
   PlusCircle,
   Download
 } from "lucide-react";
+import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
+import { formatCurrency } from "@/utils/csvExport";
+
+type Transaction = {
+  id: string;
+  type: "entrada" | "saída" | "saida"; // cobre variações
+  description: string;
+  date: string;       // ISO string
+  category?: string;
+  value: number;      // valor numérico
+  created_at?: string;
+};
 
 export function Financas() {
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+
+  // 🔎 Busca transações no Supabase (mínimo necessário)
+  const transactionsQuery = useSupabaseQuery<Transaction>({
+    table: "transactions",
+    select: "*",
+    orderBy: { column: "created_at", ascending: false },
+  });
+
+  // ✅ Array defensivo para evitar crash quando ainda não carregou
+  const transactions = transactionsQuery.data ?? [];
+
+  // 📊 KPIs derivados das transações (receita, despesas, lucro, fluxo)
+  const { revenue, expenses, profit, cashFlow } = useMemo(() => {
+    const receita = transactions
+      .filter(t => (t.type === "entrada"))
+      .reduce((sum, t) => sum + (t.value || 0), 0);
+
+    const saida = transactions
+      .filter(t => (t.type === "saída" || t.type === "saida"))
+      .reduce((sum, t) => sum + (t.value || 0), 0);
+
+    const lucro = receita - saida;
+    // fluxo de caixa simples (pode ser igual ao lucro se não houver contas/parcelas)
+    const fluxo = lucro;
+
+    return {
+      revenue: formatCurrency(receita),
+      expenses: formatCurrency(saida),
+      profit: formatCurrency(lucro),
+      cashFlow: formatCurrency(fluxo),
+    };
+  }, [transactions]);
+
+  // 📈 Dados mensais (opcional, usado nos “gráficos” textuais existentes)
+  const monthlyData = useMemo(() => {
+    // agrega por mês/ano
+    const map = new Map<string, { revenue: number; expenses: number }>();
+    for (const t of transactions) {
+      const d = new Date(t.date || t.created_at || Date.now());
+      const key = `${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+      if (!map.has(key)) map.set(key, { revenue: 0, expenses: 0 });
+      const bucket = map.get(key)!;
+      if (t.type === "entrada") {
+        bucket.revenue += t.value || 0;
+      } else if (t.type === "saída" || t.type === "saida") {
+        bucket.expenses += t.value || 0;
+      }
+    }
+    // ordena por mês/ano recente
+    const arr = Array.from(map.entries())
+      .map(([month, { revenue, expenses }]) => ({ month, revenue, expenses }))
+      .sort((a, b) => {
+        const [ma, ya] = a.month.split("/").map(Number);
+        const [mb, yb] = b.month.split("/").map(Number);
+        return yb - ya || mb - ma; // desc
+      });
+    return arr;
+  }, [transactions]);
+
+  // 🔄 Quando fechar o modal, refetch (sem mudar nada no Modal)
+  useEffect(() => {
+    if (!isTransactionModalOpen) {
+      // ao fechar, tenta refazer a leitura
+      transactionsQuery.refetch();
+    }
+  }, [isTransactionModalOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const financialData = {
-    revenue: "R$ 0,00",
-    expenses: "R$ 0,00",
-    profit: "R$ 0,00",
-    cashFlow: "R$ 0,00"
+    revenue,
+    expenses,
+    profit,
+    cashFlow
   };
-
-  const transactions = [];
-
-  const monthlyData = [];
 
   return (
     <div className="space-y-6">
@@ -44,6 +119,7 @@ export function Financas() {
             <Download className="w-4 h-4 mr-2" />
             Exportar
           </Button>
+          {/* ✅ Botão mantido exatamente como estava */}
           <Button 
             className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
             onClick={() => setIsTransactionModalOpen(true)}
@@ -65,9 +141,11 @@ export function Financas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{financialData.revenue}</div>
-              <div className="flex items-center space-x-1 text-xs">
-                <span className="text-muted-foreground">Aguardando dados</span>
-              </div>
+            <div className="flex items-center space-x-1 text-xs">
+              <span className="text-muted-foreground">
+                {transactionsQuery.loading ? "Carregando..." : "Atualizado pelos lançamentos"}
+              </span>
+            </div>
           </CardContent>
         </Card>
 
@@ -80,9 +158,11 @@ export function Financas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{financialData.expenses}</div>
-              <div className="flex items-center space-x-1 text-xs">
-                <span className="text-muted-foreground">Aguardando dados</span>
-              </div>
+            <div className="flex items-center space-x-1 text-xs">
+              <span className="text-muted-foreground">
+                {transactionsQuery.loading ? "Carregando..." : "Atualizado pelos lançamentos"}
+              </span>
+            </div>
           </CardContent>
         </Card>
 
@@ -95,9 +175,11 @@ export function Financas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{financialData.profit}</div>
-              <div className="flex items-center space-x-1 text-xs">
-                <span className="text-muted-foreground">Aguardando dados</span>
-              </div>
+            <div className="flex items-center space-x-1 text-xs">
+              <span className="text-muted-foreground">
+                {transactionsQuery.loading ? "Carregando..." : "Receita - Despesas"}
+              </span>
+            </div>
           </CardContent>
         </Card>
 
@@ -110,9 +192,11 @@ export function Financas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{financialData.cashFlow}</div>
-              <div className="flex items-center space-x-1 text-xs">
-                <span className="text-muted-foreground">Aguardando dados</span>
-              </div>
+            <div className="flex items-center space-x-1 text-xs">
+              <span className="text-muted-foreground">
+                {transactionsQuery.loading ? "Carregando..." : "Base simples dos lançamentos"}
+              </span>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -133,28 +217,35 @@ export function Financas() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {transactions.length === 0 ? (
+                {transactionsQuery.loading ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    Carregando transações...
+                  </div>
+                ) : transactions.length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground">
                     <p>Nenhuma transação registrada ainda.</p>
                     <p className="text-sm mt-2">Comece registrando suas primeiras transações!</p>
                   </div>
                 ) : (
                   transactions.map((transaction) => (
-                    <div key={transaction.id} className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors">
+                    <div 
+                      key={transaction.id} 
+                      className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                    >
                       <div className="flex items-center space-x-4">
                         <div className={`w-3 h-3 rounded-full ${transaction.type === 'entrada' ? 'bg-green-500' : 'bg-red-500'}`} />
                         <div>
                           <p className="font-medium text-foreground">{transaction.description}</p>
                           <div className="flex space-x-2 text-sm text-muted-foreground">
-                            <span>{transaction.date}</span>
+                            <span>{new Date(transaction.date || transaction.created_at || Date.now()).toLocaleDateString('pt-BR')}</span>
                             <span>•</span>
-                            <span>{transaction.category}</span>
+                            <span>{transaction.category || "Sem categoria"}</span>
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className={`font-medium ${transaction.type === 'entrada' ? 'text-green-500' : 'text-red-500'}`}>
-                          {transaction.type === 'entrada' ? '+' : '-'} {transaction.value}
+                          {transaction.type === 'entrada' ? '+' : '-'} {formatCurrency(transaction.value || 0)}
                         </p>
                         <Badge variant="outline" className="text-xs">
                           {transaction.type === 'entrada' ? 'Entrada' : 'Saída'}
@@ -188,21 +279,21 @@ export function Financas() {
                         <div className="flex justify-between text-sm">
                           <span className="text-foreground">{data.month}</span>
                           <div className="flex space-x-4">
-                            <span className="text-green-500">R$ {data.revenue.toLocaleString()}</span>
-                            <span className="text-red-500">R$ {data.expenses.toLocaleString()}</span>
+                            <span className="text-green-500">{formatCurrency(data.revenue)}</span>
+                            <span className="text-red-500">{formatCurrency(data.expenses)}</span>
                           </div>
                         </div>
                         <div className="flex space-x-2">
                           <div className="flex-1 bg-muted rounded-full h-2">
                             <div 
                               className="bg-green-500 h-2 rounded-full" 
-                              style={{ width: `${(data.revenue / 170000) * 100}%` }}
+                              style={{ width: `${Math.min((data.revenue / Math.max(1, data.revenue + data.expenses)) * 100, 100)}%` }}
                             />
                           </div>
                           <div className="flex-1 bg-muted rounded-full h-2">
                             <div 
                               className="bg-red-500 h-2 rounded-full" 
-                              style={{ width: `${(data.expenses / 170000) * 100}%` }}
+                              style={{ width: `${Math.min((data.expenses / Math.max(1, data.revenue + data.expenses)) * 100, 100)}%` }}
                             />
                           </div>
                         </div>
