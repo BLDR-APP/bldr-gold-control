@@ -27,7 +27,10 @@ export function Configuracoes() {
           <h1 className="text-3xl font-bold text-foreground">Configurações</h1>
           <p className="text-muted-foreground">Configurações gerais do sistema BLDR</p>
         </div>
-        <Button className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground">
+        <Button 
+          className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
+          onClick={() => alert('Salvando todas as configurações')}
+        >
           <Save className="w-4 h-4 mr-2" />
           Salvar Alterações
         </Button>

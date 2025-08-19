@@ -95,7 +95,10 @@ export function RH() {
           <h1 className="text-3xl font-bold text-foreground">Recursos Humanos</h1>
           <p className="text-muted-foreground">Gestão completa de pessoal da BLDR</p>
         </div>
-        <Button className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground">
+        <Button 
+          className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
+          onClick={() => alert('Abrindo formulário para novo funcionário')}
+        >
           <UserPlus className="w-4 h-4 mr-2" />
           Novo Funcionário
         </Button>
@@ -192,10 +195,18 @@ export function RH() {
                         <div className="text-right">
                           <p className="text-lg font-bold text-foreground">{employee.salary}</p>
                           <div className="flex space-x-1">
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => alert('Abrindo documentos do funcionário')}
+                            >
                               <FileText className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => alert('Gerenciando férias e horários')}
+                            >
                               <Calendar className="w-3 h-3" />
                             </Button>
                           </div>
@@ -276,19 +287,35 @@ export function RH() {
                 <CardDescription>Gere relatórios de recursos humanos</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => alert('Gerando relatório de funcionários')}
+                >
                   <Users className="w-4 h-4 mr-2" />
                   Relatório de Funcionários
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => alert('Processando folha de pagamento')}
+                >
                   <DollarSign className="w-4 h-4 mr-2" />
                   Folha de Pagamento
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => alert('Abrindo controle de férias')}
+                >
                   <Calendar className="w-4 h-4 mr-2" />
                   Controle de Férias
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => alert('Iniciando avaliações de desempenho')}
+                >
                   <FileText className="w-4 h-4 mr-2" />
                   Avaliações de Desempenho
                 </Button>

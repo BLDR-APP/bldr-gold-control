@@ -82,11 +82,18 @@ export function Relatorios() {
           <p className="text-muted-foreground">Central de relatórios e análises da BLDR</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="border-bldr-gold text-bldr-gold hover:bg-bldr-gold hover:text-primary-foreground">
+          <Button 
+            variant="outline" 
+            className="border-bldr-gold text-bldr-gold hover:bg-bldr-gold hover:text-primary-foreground"
+            onClick={() => alert('Abrindo agendador de relatórios')}
+          >
             <Calendar className="w-4 h-4 mr-2" />
             Agendar Relatório
           </Button>
-          <Button className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground">
+          <Button 
+            className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
+            onClick={() => alert('Criando novo relatório personalizado')}
+          >
             <FileText className="w-4 h-4 mr-2" />
             Novo Relatório
           </Button>

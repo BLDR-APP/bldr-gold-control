@@ -36,10 +36,10 @@ export function Dashboard({ userRole }: DashboardProps) {
       visible: true
     },
     {
-      title: "Produtos em Estoque",
-      value: "1.247",
-      change: "-2.1%",
-      trend: "down",
+      title: "Serviços Ativos",
+      value: "127",
+      change: "+5.3%",
+      trend: "up",
       icon: Package,
       visible: true
     },
@@ -60,11 +60,11 @@ export function Dashboard({ userRole }: DashboardProps) {
     { id: "004", client: "Ana Paula", value: "R$ 890", status: "Cancelado" },
   ];
 
-  const topProducts = [
-    { name: "Produto A", sales: 156, revenue: "R$ 15.600" },
-    { name: "Produto B", sales: 142, revenue: "R$ 12.480" },
-    { name: "Produto C", sales: 128, revenue: "R$ 11.200" },
-    { name: "Produto D", sales: 98, revenue: "R$ 8.820" },
+  const topServices = [
+    { name: "Consultoria Estratégica", sales: 156, revenue: "R$ 15.600" },
+    { name: "Auditoria Empresarial", sales: 142, revenue: "R$ 12.480" },
+    { name: "Planejamento Financeiro", sales: 128, revenue: "R$ 11.200" },
+    { name: "Assessoria Jurídica", sales: 98, revenue: "R$ 8.820" },
   ];
 
   return (
@@ -140,28 +140,28 @@ export function Dashboard({ userRole }: DashboardProps) {
           </CardContent>
         </Card>
 
-        {/* Top Products */}
+        {/* Top Services */}
         <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="text-foreground">Produtos Mais Vendidos</CardTitle>
+            <CardTitle className="text-foreground">Serviços Mais Vendidos</CardTitle>
             <CardDescription>Ranking de vendas do mês</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {topProducts.map((product, index) => (
+              {topServices.map((service, index) => (
                 <div key={index} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <span className="text-sm font-medium text-bldr-gold">#{index + 1}</span>
-                      <span className="font-medium text-foreground">{product.name}</span>
+                      <span className="font-medium text-foreground">{service.name}</span>
                     </div>
-                    <span className="text-sm text-muted-foreground">{product.revenue}</span>
+                    <span className="text-sm text-muted-foreground">{service.revenue}</span>
                   </div>
                   <Progress 
-                    value={(product.sales / 160) * 100} 
+                    value={(service.sales / 160) * 100} 
                     className="h-2"
                   />
-                  <p className="text-xs text-muted-foreground">{product.sales} vendas</p>
+                  <p className="text-xs text-muted-foreground">{service.sales} vendas</p>
                 </div>
               ))}
             </div>
@@ -177,28 +177,37 @@ export function Dashboard({ userRole }: DashboardProps) {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
-            <button className="p-4 text-left rounded-lg border border-border hover:bg-muted/50 transition-colors">
+            <button 
+              className="p-4 text-left rounded-lg border border-border hover:bg-muted/50 transition-colors"
+              onClick={() => alert('Redirecionando para nova venda de serviço')}
+            >
               <div className="flex items-center space-x-3">
                 <TrendingUp className="h-6 w-6 text-bldr-gold" />
                 <div>
                   <h3 className="font-medium text-foreground">Nova Venda</h3>
-                  <p className="text-sm text-muted-foreground">Registrar nova transação</p>
+                  <p className="text-sm text-muted-foreground">Registrar novo serviço</p>
                 </div>
               </div>
             </button>
             
-            <button className="p-4 text-left rounded-lg border border-border hover:bg-muted/50 transition-colors">
+            <button 
+              className="p-4 text-left rounded-lg border border-border hover:bg-muted/50 transition-colors"
+              onClick={() => alert('Abrindo gestão de serviços')}
+            >
               <div className="flex items-center space-x-3">
                 <Package className="h-6 w-6 text-bldr-gold" />
                 <div>
-                  <h3 className="font-medium text-foreground">Gerenciar Estoque</h3>
-                  <p className="text-sm text-muted-foreground">Controle de produtos</p>
+                  <h3 className="font-medium text-foreground">Gerenciar Serviços</h3>
+                  <p className="text-sm text-muted-foreground">Controle de serviços</p>
                 </div>
               </div>
             </button>
 
             {isPartner && (
-              <button className="p-4 text-left rounded-lg border border-border hover:bg-muted/50 transition-colors">
+              <button 
+                className="p-4 text-left rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                onClick={() => alert('Abrindo relatórios detalhados')}
+              >
                 <div className="flex items-center space-x-3">
                   <Eye className="h-6 w-6 text-bldr-gold" />
                   <div>
