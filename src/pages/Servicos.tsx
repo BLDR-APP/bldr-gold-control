@@ -212,7 +212,7 @@ export function Servicos() {
             Atualizar
           </Button>
           {canWrite && (
-            <Button 
+            <Button
               className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
               onClick={() => {
                 setSelectedService(null);
