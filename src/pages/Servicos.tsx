@@ -67,6 +67,10 @@ export function Servicos() {
     limit: 10
   });
 
+  // ⚠️ Derivados defensivos para evitar TypeError em undefined
+  const services = servicesQuery.data ?? [];
+  const projects = projectsQuery.data ?? [];
+
   // KPIs calculation
   const [kpis, setKpis] = useState({
     totalServices: 0,
@@ -76,20 +80,19 @@ export function Servicos() {
   });
 
   useEffect(() => {
-    if (servicesQuery.data && projectsQuery.data) {
-      const totalServices = servicesQuery.data.length;
-      const activeProjects = projectsQuery.data.filter(p => p.status === 'active').length;
-      const pendingServices = servicesQuery.data.filter(s => !s.is_active).length;
-      const totalRevenue = servicesQuery.data.reduce((sum, service) => sum + (service.price || 0), 0);
+    // usa sempre os derivados (seguros) acima
+    const totalServices = services.length;
+    const activeProjects = projects.filter(p => p.status === 'active').length;
+    const pendingServices = services.filter(s => !s.is_active).length;
+    const totalRevenue = services.reduce((sum, service) => sum + (service.price || 0), 0);
 
-      setKpis({
-        totalServices,
-        activeProjects,
-        pendingServices,
-        totalRevenue
-      });
-    }
-  }, [servicesQuery.data, projectsQuery.data]);
+    setKpis({
+      totalServices,
+      activeProjects,
+      pendingServices,
+      totalRevenue
+    });
+  }, [services, projects]);
 
   const getStatusBadge = (isActive: boolean) => {
     return isActive 
@@ -151,8 +154,8 @@ export function Servicos() {
     projectsQuery.refetch();
   };
 
-  // Group services by category
-  const servicesByCategory = servicesQuery.data.reduce((acc, service) => {
+  // Group services by category (usando array defensivo)
+  const servicesByCategory = services.reduce((acc, service) => {
     const category = service.category || 'Outros';
     if (!acc[category]) {
       acc[category] = { services: 0, revenue: 0 };
@@ -162,13 +165,18 @@ export function Servicos() {
     return acc;
   }, {} as Record<string, { services: number; revenue: number }>);
 
+  // Normaliza mensagem de erro (evita [object Object])
+  const errorMsg =
+    (servicesQuery.error && (servicesQuery.error.message ?? String(servicesQuery.error))) ||
+    (projectsQuery.error && (projectsQuery.error.message ?? String(projectsQuery.error)));
+
   if (servicesQuery.error || projectsQuery.error) {
     return (
       <div className="space-y-6">
         <div className="text-center p-8">
           <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-foreground">Erro ao carregar dados</h3>
-          <p className="text-muted-foreground">{servicesQuery.error || projectsQuery.error}</p>
+          <p className="text-muted-foreground">{errorMsg}</p>
           <Button 
             onClick={() => {
               servicesQuery.refetch();
@@ -327,7 +335,7 @@ export function Servicos() {
                     </div>
                   ))}
                 </div>
-              ) : servicesQuery.data.length === 0 ? (
+              ) : services.length === 0 ? (
                 <div className="text-center p-8">
                   <Briefcase className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-foreground">Nenhum serviço encontrado</h3>
@@ -335,7 +343,7 @@ export function Servicos() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {servicesQuery.data.map((service) => (
+                  {services.map((service) => (
                     <div key={service.id} className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors">
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-2">
@@ -398,7 +406,7 @@ export function Servicos() {
                     </div>
                   ))}
                 </div>
-              ) : projectsQuery.data.length === 0 ? (
+              ) : projects.length === 0 ? (
                 <div className="text-center p-8">
                   <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-foreground">Nenhum projeto encontrado</h3>
@@ -406,7 +414,7 @@ export function Servicos() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {projectsQuery.data.map((project) => (
+                  {projects.map((project) => (
                     <div key={project.id} className="flex items-center justify-between p-4 rounded-lg border border-border">
                       <div className="flex items-center space-x-4">
                         <div className={`w-3 h-3 rounded-full ${
