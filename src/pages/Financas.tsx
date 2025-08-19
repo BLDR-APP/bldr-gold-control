@@ -36,21 +36,26 @@ export function Financas() {
     orderBy: { column: "created_at", ascending: false },
   });
 
-  // ✅ Array defensivo para evitar crash quando ainda não carregou
-  const transactions = transactionsQuery.data ?? [];
+  // ✅ Array defensivo + normalização de campos (única mudança necessária)
+  const transactions: Transaction[] = (transactionsQuery.data ?? []).map((t: any) => ({
+    ...t,
+    // aceita "value" | "amount" | "valor" e converte para número (suporta "120,00")
+    value: Number(String(t.value ?? t.amount ?? t.valor ?? "0").replace(/\./g, "").replace(",", ".")),
+    // aceita "type" | "tipo"
+    type: (t.type ?? t.tipo) as "entrada" | "saída" | "saida",
+  }));
 
   // 📊 KPIs derivados das transações (receita, despesas, lucro, fluxo)
   const { revenue, expenses, profit, cashFlow } = useMemo(() => {
     const receita = transactions
-      .filter(t => (t.type === "entrada"))
+      .filter(t => t.type === "entrada")
       .reduce((sum, t) => sum + (t.value || 0), 0);
 
     const saida = transactions
-      .filter(t => (t.type === "saída" || t.type === "saida"))
+      .filter(t => t.type === "saída" || t.type === "saida")
       .reduce((sum, t) => sum + (t.value || 0), 0);
 
     const lucro = receita - saida;
-    // fluxo de caixa simples (pode ser igual ao lucro se não houver contas/parcelas)
     const fluxo = lucro;
 
     return {
@@ -61,9 +66,8 @@ export function Financas() {
     };
   }, [transactions]);
 
-  // 📈 Dados mensais (opcional, usado nos “gráficos” textuais existentes)
+  // 📈 Dados mensais (para os “gráficos” textuais existentes)
   const monthlyData = useMemo(() => {
-    // agrega por mês/ano
     const map = new Map<string, { revenue: number; expenses: number }>();
     for (const t of transactions) {
       const d = new Date(t.date || t.created_at || Date.now());
@@ -76,21 +80,18 @@ export function Financas() {
         bucket.expenses += t.value || 0;
       }
     }
-    // ordena por mês/ano recente
-    const arr = Array.from(map.entries())
+    return Array.from(map.entries())
       .map(([month, { revenue, expenses }]) => ({ month, revenue, expenses }))
       .sort((a, b) => {
         const [ma, ya] = a.month.split("/").map(Number);
         const [mb, yb] = b.month.split("/").map(Number);
         return yb - ya || mb - ma; // desc
       });
-    return arr;
   }, [transactions]);
 
-  // 🔄 Quando fechar o modal, refetch (sem mudar nada no Modal)
+  // 🔄 Quando fechar o modal, refetch (não mexe no modal)
   useEffect(() => {
     if (!isTransactionModalOpen) {
-      // ao fechar, tenta refazer a leitura
       transactionsQuery.refetch();
     }
   }, [isTransactionModalOpen]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -119,7 +120,7 @@ export function Financas() {
             <Download className="w-4 h-4 mr-2" />
             Exportar
           </Button>
-          {/* ✅ Botão mantido exatamente como estava */}
+          {/* Botão mantido exatamente como estava */}
           <Button 
             className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
             onClick={() => setIsTransactionModalOpen(true)}
