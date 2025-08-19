@@ -14,7 +14,6 @@ import {
   Edit,
   Trash2,
   RefreshCw,
-  User
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,11 +66,9 @@ export function Servicos() {
     limit: 10
   });
 
-  // ⚠️ Derivados defensivos para evitar TypeError em undefined
   const services = servicesQuery.data ?? [];
   const projects = projectsQuery.data ?? [];
 
-  // KPIs calculation
   const [kpis, setKpis] = useState({
     totalServices: 0,
     activeProjects: 0,
@@ -80,7 +77,6 @@ export function Servicos() {
   });
 
   useEffect(() => {
-    // usa sempre os derivados (seguros) acima
     const totalServices = services.length;
     const activeProjects = projects.filter(p => p.status === 'active').length;
     const pendingServices = services.filter(s => !s.is_active).length;
@@ -154,7 +150,6 @@ export function Servicos() {
     projectsQuery.refetch();
   };
 
-  // Group services by category (usando array defensivo)
   const servicesByCategory = services.reduce((acc, service) => {
     const category = service.category || 'Outros';
     if (!acc[category]) {
@@ -165,7 +160,6 @@ export function Servicos() {
     return acc;
   }, {} as Record<string, { services: number; revenue: number }>);
 
-  // Normaliza mensagem de erro (evita [object Object])
   const errorMsg =
     (servicesQuery.error && (servicesQuery.error.message ?? String(servicesQuery.error))) ||
     (projectsQuery.error && (projectsQuery.error.message ?? String(projectsQuery.error)));
@@ -211,18 +205,17 @@ export function Servicos() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Atualizar
           </Button>
-            
+
           <Button 
-              className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
-              onClick={() => {
-                setSelectedService(null);
-                setServiceModalOpen(true);
-              }}
-            >
-              <PlusCircle className="w-4 h-4 mr-2" />
-              Novo Serviço
-            </Button>
-          )}
+            className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
+            onClick={() => {
+              setSelectedService(null);
+              setServiceModalOpen(true);
+            }}
+          >
+            <PlusCircle className="w-4 h-4 mr-2" />
+            Novo Serviço
+          </Button>
         </div>
       </div>
 
@@ -459,25 +452,15 @@ export function Servicos() {
                 <div className="text-center p-8">
                   <Briefcase className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-foreground">Nenhuma categoria encontrada</h3>
-                  <p className="text-muted-foreground">Não há categorias de serviços ainda.</p>
+                  <p className="text-muted-foreground">Não há serviços categorizados ainda.</p>
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                   {Object.entries(servicesByCategory).map(([category, data]) => (
                     <div key={category} className="p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-medium text-foreground">{category}</h3>
-                        <Badge variant="outline" className="border-bldr-gold text-bldr-gold">
-                          {data.services} serviços
-                        </Badge>
-                      </div>
+                      <h3 className="font-medium text-foreground">{category}</h3>
+                      <p className="text-sm text-muted-foreground">{data.services} serviços</p>
                       <p className="text-lg font-bold text-foreground">{formatCurrency(data.revenue)}</p>
-                      <div className="w-full bg-muted rounded-full h-2 mt-2">
-                        <div 
-                          className="bg-bldr-gold h-2 rounded-full" 
-                          style={{ width: `${Math.min((data.services / Math.max(...Object.values(servicesByCategory).map(d => d.services))) * 100, 100)}%` }}
-                        />
-                      </div>
                     </div>
                   ))}
                 </div>
@@ -487,7 +470,6 @@ export function Servicos() {
         </TabsContent>
       </Tabs>
 
-      {/* Modals */}
       <ServiceModal
         open={serviceModalOpen}
         onOpenChange={setServiceModalOpen}
