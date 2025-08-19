@@ -77,7 +77,7 @@ export function AppSidebar({ userRole, onLogout }: AppSidebarProps) {
 
         {/* Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-bldr-gold">Navegação</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-bldr-gold font-medium">Navegação</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (

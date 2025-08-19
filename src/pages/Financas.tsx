@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TransactionModal } from "@/components/modals/TransactionModal";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -13,6 +15,7 @@ import {
 } from "lucide-react";
 
 export function Financas() {
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const financialData = {
     revenue: "R$ 0,00",
     expenses: "R$ 0,00",
@@ -20,22 +23,9 @@ export function Financas() {
     cashFlow: "R$ 0,00"
   };
 
-  const transactions = [
-    { id: 1, date: "2024-01-15", description: "Venda - Cliente João", type: "entrada", value: "R$ 2.350,00", category: "Vendas" },
-    { id: 2, date: "2024-01-15", description: "Fornecedor XYZ", type: "saida", value: "R$ 1.200,00", category: "Compras" },
-    { id: 3, date: "2024-01-14", description: "Venda - Cliente Maria", type: "entrada", value: "R$ 890,00", category: "Vendas" },
-    { id: 4, date: "2024-01-14", description: "Energia Elétrica", type: "saida", value: "R$ 450,00", category: "Operacional" },
-    { id: 5, date: "2024-01-13", description: "Venda - Cliente Pedro", type: "entrada", value: "R$ 3.240,00", category: "Vendas" },
-  ];
+  const transactions = [];
 
-  const monthlyData = [
-    { month: "Jan", revenue: 125430, expenses: 78250 },
-    { month: "Fev", revenue: 142300, expenses: 85600 },
-    { month: "Mar", revenue: 134200, expenses: 79800 },
-    { month: "Abr", revenue: 156780, expenses: 92400 },
-    { month: "Mai", revenue: 143500, expenses: 88200 },
-    { month: "Jun", revenue: 167890, expenses: 95600 },
-  ];
+  const monthlyData = [];
 
   return (
     <div className="space-y-6">
@@ -56,7 +46,7 @@ export function Financas() {
           </Button>
           <Button 
             className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
-            onClick={() => alert('Abrir modal de nova transação')}
+            onClick={() => setIsTransactionModalOpen(true)}
           >
             <PlusCircle className="w-4 h-4 mr-2" />
             Nova Transação
@@ -187,31 +177,38 @@ export function Financas() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {monthlyData.map((data, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-foreground">{data.month}</span>
-                        <div className="flex space-x-4">
-                          <span className="text-green-500">R$ {data.revenue.toLocaleString()}</span>
-                          <span className="text-red-500">R$ {data.expenses.toLocaleString()}</span>
-                        </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        <div className="flex-1 bg-muted rounded-full h-2">
-                          <div 
-                            className="bg-green-500 h-2 rounded-full" 
-                            style={{ width: `${(data.revenue / 170000) * 100}%` }}
-                          />
-                        </div>
-                        <div className="flex-1 bg-muted rounded-full h-2">
-                          <div 
-                            className="bg-red-500 h-2 rounded-full" 
-                            style={{ width: `${(data.expenses / 170000) * 100}%` }}
-                          />
-                        </div>
-                      </div>
+                  {monthlyData.length === 0 ? (
+                    <div className="p-8 text-center text-muted-foreground">
+                      <p>Nenhum dado histórico disponível.</p>
+                      <p className="text-sm mt-2">Os gráficos aparecerão conforme você registra transações.</p>
                     </div>
-                  ))}
+                  ) : (
+                    monthlyData.map((data, index) => (
+                      <div key={index} className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-foreground">{data.month}</span>
+                          <div className="flex space-x-4">
+                            <span className="text-green-500">R$ {data.revenue.toLocaleString()}</span>
+                            <span className="text-red-500">R$ {data.expenses.toLocaleString()}</span>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <div className="flex-1 bg-muted rounded-full h-2">
+                            <div 
+                              className="bg-green-500 h-2 rounded-full" 
+                              style={{ width: `${(data.revenue / 170000) * 100}%` }}
+                            />
+                          </div>
+                          <div className="flex-1 bg-muted rounded-full h-2">
+                            <div 
+                              className="bg-red-500 h-2 rounded-full" 
+                              style={{ width: `${(data.expenses / 170000) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -223,26 +220,10 @@ export function Financas() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {[
-                    { category: "Operacional", percentage: 45, value: "R$ 35.200" },
-                    { category: "Pessoal", percentage: 30, value: "R$ 23.500" },
-                    { category: "Compras", percentage: 20, value: "R$ 15.650" },
-                    { category: "Marketing", percentage: 5, value: "R$ 3.900" }
-                  ].map((item, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-foreground">{item.category}</span>
-                        <span className="text-muted-foreground">{item.value}</span>
-                      </div>
-                      <div className="bg-muted rounded-full h-2">
-                        <div 
-                          className="bg-bldr-gold h-2 rounded-full transition-all" 
-                          style={{ width: `${item.percentage}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-muted-foreground">{item.percentage}%</span>
-                    </div>
-                  ))}
+                  <div className="p-8 text-center text-muted-foreground">
+                    <p>Categorias aparecerão após registro de despesas.</p>
+                    <p className="text-sm mt-2">Organize suas despesas por categoria para melhor controle.</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -315,6 +296,11 @@ export function Financas() {
           </div>
         </TabsContent>
       </Tabs>
+      
+      <TransactionModal 
+        open={isTransactionModalOpen} 
+        onOpenChange={setIsTransactionModalOpen} 
+      />
     </div>
   );
 }
