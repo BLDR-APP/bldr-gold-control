@@ -8,7 +8,7 @@ import { Layout } from "@/components/Layout";
 import { Dashboard } from "@/pages/Dashboard";
 import { Financas } from "@/pages/Financas";
 import { Vendas } from "@/pages/Vendas";
-import { Estoque } from "@/pages/Estoque";
+import { Servicos } from "@/pages/Servicos";
 import { RH } from "@/pages/RH";
 import { Relatorios } from "@/pages/Relatorios";
 import { Configuracoes } from "@/pages/Configuracoes";
@@ -30,7 +30,7 @@ const App = () => {
               <Route path="/" element={<Dashboard userRole={userRole} />} />
               <Route path="/financas" element={<Financas />} />
               <Route path="/vendas" element={<Vendas />} />
-              <Route path="/estoque" element={<Estoque />} />
+              <Route path="/estoque" element={<Servicos />} />
               <Route path="/rh" element={<RH />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/configuracoes" element={<Configuracoes />} />

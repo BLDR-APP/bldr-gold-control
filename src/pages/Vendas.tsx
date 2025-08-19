@@ -28,7 +28,7 @@ export function Vendas() {
       date: "2024-01-15", 
       value: "R$ 2.350,00", 
       status: "Finalizada",
-      products: ["Produto A", "Produto B"],
+      services: ["Consultoria Estratégica", "Auditoria"],
       seller: "Ana Costa"
     },
     { 
@@ -37,7 +37,7 @@ export function Vendas() {
       date: "2024-01-15", 
       value: "R$ 1.890,00", 
       status: "Processando",
-      products: ["Produto C"],
+      services: ["Análise de Mercado"],
       seller: "Pedro Lima"
     },
     { 
@@ -46,7 +46,7 @@ export function Vendas() {
       date: "2024-01-14", 
       value: "R$ 3.240,00", 
       status: "Finalizada",
-      products: ["Produto A", "Produto D", "Produto E"],
+      services: ["Consultoria Estratégica", "Gestão de Projetos", "Treinamento"],
       seller: "Ana Costa"
     },
     { 
@@ -55,7 +55,7 @@ export function Vendas() {
       date: "2024-01-14", 
       value: "R$ 890,00", 
       status: "Cancelada",
-      products: ["Produto B"],
+      services: ["Auditoria"],
       seller: "Carlos Silva"
     },
   ];
@@ -67,11 +67,11 @@ export function Vendas() {
     { seller: "Lucia Ferreira", target: 8000, achieved: 6100, percentage: 76.3 },
   ];
 
-  const topProducts = [
-    { name: "Produto A", sales: 156, revenue: "R$ 15.600,00", margin: "32%" },
-    { name: "Produto B", sales: 142, revenue: "R$ 12.480,00", margin: "28%" },
-    { name: "Produto C", sales: 128, revenue: "R$ 11.200,00", margin: "35%" },
-    { name: "Produto D", sales: 98, revenue: "R$ 8.820,00", margin: "25%" },
+  const topServices = [
+    { name: "Consultoria Estratégica", sales: 156, revenue: "R$ 15.600,00", margin: "32%" },
+    { name: "Auditoria Empresarial", sales: 142, revenue: "R$ 12.480,00", margin: "28%" },
+    { name: "Análise de Mercado", sales: 128, revenue: "R$ 11.200,00", margin: "35%" },
+    { name: "Gestão de Projetos", sales: 98, revenue: "R$ 8.820,00", margin: "25%" },
   ];
 
   return (
@@ -80,9 +80,12 @@ export function Vendas() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Vendas</h1>
-          <p className="text-muted-foreground">Gestão completa de vendas e relacionamento com clientes</p>
+          <p className="text-muted-foreground">Gestão completa de vendas de serviços e relacionamento com clientes</p>
         </div>
-        <Button className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground">
+        <Button 
+          className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
+          onClick={() => alert('Abrir modal de nova venda de serviço')}
+        >
           <PlusCircle className="w-4 h-4 mr-2" />
           Nova Venda
         </Button>
@@ -161,7 +164,7 @@ export function Vendas() {
         <TabsList className="grid w-full grid-cols-4 bg-muted">
           <TabsTrigger value="sales">Vendas</TabsTrigger>
           <TabsTrigger value="targets">Metas</TabsTrigger>
-          <TabsTrigger value="products">Produtos</TabsTrigger>
+          <TabsTrigger value="products">Serviços</TabsTrigger>
           <TabsTrigger value="analytics">Análises</TabsTrigger>
         </TabsList>
 
@@ -190,7 +193,7 @@ export function Vendas() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-muted-foreground">
-                            Produtos: {sale.products.join(', ')}
+                            Serviços: {sale.services.join(', ')}
                           </p>
                           <p className="text-sm text-muted-foreground">
                             Vendedor: {sale.seller}
@@ -253,26 +256,26 @@ export function Vendas() {
         <TabsContent value="products" className="space-y-4">
           <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="text-foreground">Produtos Mais Vendidos</CardTitle>
-              <CardDescription>Ranking de produtos por vendas e margem</CardDescription>
+              <CardTitle className="text-foreground">Serviços Mais Vendidos</CardTitle>
+              <CardDescription>Ranking de serviços por vendas e margem</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {topProducts.map((product, index) => (
+                {topServices.map((service, index) => (
                   <div key={index} className="flex items-center justify-between p-4 rounded-lg border border-border">
                     <div className="flex items-center space-x-4">
                       <div className="w-10 h-10 bg-bldr-gold rounded-lg flex items-center justify-center">
                         <span className="text-primary-foreground font-bold">#{index + 1}</span>
                       </div>
                       <div>
-                        <p className="font-medium text-foreground">{product.name}</p>
-                        <p className="text-sm text-muted-foreground">{product.sales} vendas</p>
+                        <p className="font-medium text-foreground">{service.name}</p>
+                        <p className="text-sm text-muted-foreground">{service.sales} vendas</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-foreground">{product.revenue}</p>
+                      <p className="font-medium text-foreground">{service.revenue}</p>
                       <Badge variant="outline" className="border-bldr-gold text-bldr-gold">
-                        {product.margin} margem
+                        {service.margin} margem
                       </Badge>
                     </div>
                   </div>

@@ -33,7 +33,7 @@ const partnerItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Finanças", url: "/financas", icon: DollarSign },
   { title: "Vendas", url: "/vendas", icon: TrendingUp },
-  { title: "Estoque", url: "/estoque", icon: Package },
+  { title: "Serviços", url: "/estoque", icon: Package },
   { title: "RH", url: "/rh", icon: Users },
   { title: "Relatórios", url: "/relatorios", icon: FileText },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
@@ -42,7 +42,7 @@ const partnerItems = [
 const userItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Vendas", url: "/vendas", icon: TrendingUp },
-  { title: "Estoque", url: "/estoque", icon: Package },
+  { title: "Serviços", url: "/estoque", icon: Package },
 ];
 
 export function AppSidebar({ userRole, onLogout }: AppSidebarProps) {
@@ -88,8 +88,8 @@ export function AppSidebar({ userRole, onLogout }: AppSidebarProps) {
                       className={({ isActive: linkActive }) => 
                         `flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
                           linkActive 
-                            ? 'bg-accent text-accent-foreground font-medium' 
-                            : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                            ? 'bg-bldr-gold text-bldr-black font-medium' 
+                            : 'text-bldr-gold hover:bg-bldr-black-light hover:text-bldr-gold-light'
                         }`
                       }
                     >
@@ -107,7 +107,7 @@ export function AppSidebar({ userRole, onLogout }: AppSidebarProps) {
         <div className="mt-auto p-4 border-t border-border">
           <button
             onClick={onLogout}
-            className="flex items-center gap-3 w-full px-3 py-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md transition-colors"
+            className="flex items-center gap-3 w-full px-3 py-2 text-bldr-gold hover:bg-bldr-black-light hover:text-bldr-gold-light rounded-md transition-colors"
           >
             <LogOut className="w-5 h-5" />
             {!isCollapsed && <span>Sair</span>}

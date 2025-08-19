@@ -46,11 +46,18 @@ export function Financas() {
           <p className="text-muted-foreground">Controle financeiro completo da BLDR</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="border-bldr-gold text-bldr-gold hover:bg-bldr-gold hover:text-primary-foreground">
+          <Button 
+            variant="outline" 
+            className="border-bldr-gold text-bldr-gold hover:bg-bldr-gold hover:text-primary-foreground"
+            onClick={() => alert('Exportando relatório financeiro...')}
+          >
             <Download className="w-4 h-4 mr-2" />
             Exportar
           </Button>
-          <Button className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground">
+          <Button 
+            className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
+            onClick={() => alert('Abrir modal de nova transação')}
+          >
             <PlusCircle className="w-4 h-4 mr-2" />
             Nova Transação
           </Button>
@@ -251,19 +258,35 @@ export function Financas() {
                 <CardDescription>Gere relatórios financeiros detalhados</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => alert('Gerando Demonstrativo de Resultados...')}
+                >
                   <CreditCard className="w-4 h-4 mr-2" />
                   Demonstrativo de Resultados
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => alert('Gerando Fluxo de Caixa Detalhado...')}
+                >
                   <DollarSign className="w-4 h-4 mr-2" />
                   Fluxo de Caixa Detalhado
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => alert('Gerando Análise de Tendências...')}
+                >
                   <TrendingUp className="w-4 h-4 mr-2" />
                   Análise de Tendências
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => alert('Gerando Balanço Patrimonial...')}
+                >
                   <Wallet className="w-4 h-4 mr-2" />
                   Balanço Patrimonial
                 </Button>
