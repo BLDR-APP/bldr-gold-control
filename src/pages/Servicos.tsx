@@ -13,7 +13,8 @@ import {
   PlusCircle,
   Edit,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  User
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,63 +53,60 @@ export function Servicos() {
 
   // Services query
   const servicesQuery = useSupabaseQuery<Service>({
-    table: "services",
-    select: "*",
-    filters: searchTerm ? [{ column: "name", operator: "ilike", value: `%${searchTerm}%` }] : undefined,
-    orderBy: { column: "created_at", ascending: false },
+    table: 'services',
+    select: '*',
+    filters: searchTerm ? [{ column: 'name', operator: 'ilike', value: `%${searchTerm}%` }] : undefined,
+    orderBy: { column: 'created_at', ascending: false }
   });
 
   // Projects query
   const projectsQuery = useSupabaseQuery<Project>({
-    table: "projects",
-    select: "*, services(name)",
-    orderBy: { column: "created_at", ascending: false },
-    limit: 10,
+    table: 'projects',
+    select: '*, services(name)',
+    orderBy: { column: 'created_at', ascending: false },
+    limit: 10
   });
 
+  // ⚠️ Derivados defensivos para evitar TypeError em undefined
   const services = servicesQuery.data ?? [];
   const projects = projectsQuery.data ?? [];
 
+  // KPIs calculation
   const [kpis, setKpis] = useState({
     totalServices: 0,
     activeProjects: 0,
     pendingServices: 0,
-    totalRevenue: 0,
+    totalRevenue: 0
   });
 
   useEffect(() => {
+    // usa sempre os derivados (seguros) acima
     const totalServices = services.length;
-    const activeProjects = projects.filter((p) => p.status === "active").length;
-    const pendingServices = services.filter((s) => !s.is_active).length;
+    const activeProjects = projects.filter(p => p.status === 'active').length;
+    const pendingServices = services.filter(s => !s.is_active).length;
     const totalRevenue = services.reduce((sum, service) => sum + (service.price || 0), 0);
 
     setKpis({
       totalServices,
       activeProjects,
       pendingServices,
-      totalRevenue,
+      totalRevenue
     });
   }, [services, projects]);
 
   const getStatusBadge = (isActive: boolean) => {
-    return isActive ? (
-      <Badge variant="default" className="bg-blue-500/20 text-blue-600 border-blue-500/30">
-        Ativo
-      </Badge>
-    ) : (
-      <Badge variant="secondary" className="bg-gray-500/20 text-gray-600 border-gray-500/30">
-        Inativo
-      </Badge>
-    );
+    return isActive 
+      ? <Badge variant="default" className="bg-blue-500/20 text-blue-600 border-blue-500/30">Ativo</Badge>
+      : <Badge variant="secondary" className="bg-gray-500/20 text-gray-600 border-gray-500/30">Inativo</Badge>;
   };
 
   const getProjectStatusBadge = (status: string) => {
     switch (status) {
-      case "active":
+      case 'active':
         return <Badge variant="default" className="bg-green-500/20 text-green-600 border-green-500/30">Ativo</Badge>;
-      case "completed":
+      case 'completed':
         return <Badge variant="default" className="bg-blue-500/20 text-blue-600 border-blue-500/30">Concluído</Badge>;
-      case "on_hold":
+      case 'on_hold':
         return <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30">Pausado</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
@@ -138,9 +136,9 @@ export function Servicos() {
 
     try {
       const { error } = await supabase
-        .from("services")
+        .from('services')
         .update({ is_active: false })
-        .eq("id", selectedService.id);
+        .eq('id', selectedService.id);
 
       if (error) throw error;
 
@@ -156,8 +154,9 @@ export function Servicos() {
     projectsQuery.refetch();
   };
 
+  // Group services by category (usando array defensivo)
   const servicesByCategory = services.reduce((acc, service) => {
-    const category = service.category || "Outros";
+    const category = service.category || 'Outros';
     if (!acc[category]) {
       acc[category] = { services: 0, revenue: 0 };
     }
@@ -166,6 +165,7 @@ export function Servicos() {
     return acc;
   }, {} as Record<string, { services: number; revenue: number }>);
 
+  // Normaliza mensagem de erro (evita [object Object])
   const errorMsg =
     (servicesQuery.error && (servicesQuery.error.message ?? String(servicesQuery.error))) ||
     (projectsQuery.error && (projectsQuery.error.message ?? String(projectsQuery.error)));
@@ -177,7 +177,7 @@ export function Servicos() {
           <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-foreground">Erro ao carregar dados</h3>
           <p className="text-muted-foreground">{errorMsg}</p>
-          <Button
+          <Button 
             onClick={() => {
               servicesQuery.refetch();
               projectsQuery.refetch();
@@ -200,8 +200,8 @@ export function Servicos() {
           <p className="text-muted-foreground">Gestão completa dos serviços oferecidos pela BLDR</p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
+          <Button 
+            variant="outline" 
             className="border-bldr-gold text-bldr-gold hover:bg-bldr-gold hover:text-primary-foreground"
             onClick={() => {
               servicesQuery.refetch();
@@ -211,9 +211,8 @@ export function Servicos() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Atualizar
           </Button>
-
           {canWrite && (
-            <Button
+            <Button 
               className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
               onClick={() => {
                 setSelectedService(null);
@@ -456,4 +455,54 @@ export function Servicos() {
                     </div>
                   ))}
                 </div>
-              ) : Object.keys(servicesByCategory).length === 0
+              ) : Object.keys(servicesByCategory).length === 0 ? (
+                <div className="text-center p-8">
+                  <Briefcase className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground">Nenhuma categoria encontrada</h3>
+                  <p className="text-muted-foreground">Não há categorias de serviços ainda.</p>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {Object.entries(servicesByCategory).map(([category, data]) => (
+                    <div key={category} className="p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-medium text-foreground">{category}</h3>
+                        <Badge variant="outline" className="border-bldr-gold text-bldr-gold">
+                          {data.services} serviços
+                        </Badge>
+                      </div>
+                      <p className="text-lg font-bold text-foreground">{formatCurrency(data.revenue)}</p>
+                      <div className="w-full bg-muted rounded-full h-2 mt-2">
+                        <div 
+                          className="bg-bldr-gold h-2 rounded-full" 
+                          style={{ width: `${Math.min((data.services / Math.max(...Object.values(servicesByCategory).map(d => d.services))) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Modals */}
+      <ServiceModal
+        open={serviceModalOpen}
+        onOpenChange={setServiceModalOpen}
+        service={selectedService}
+        onSuccess={handleServiceSuccess}
+      />
+
+      <DeleteConfirmModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        title="Remover Serviço"
+        description="Tem certeza que deseja remover este serviço? Esta ação irá marcá-lo como inativo."
+        itemName={selectedService?.name || ""}
+        onConfirm={confirmDelete}
+      />
+    </div>
+  );
+}
