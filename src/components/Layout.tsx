@@ -1,46 +1,54 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useState, useEffect } from "react";
-import { LoginModal } from "@/components/LoginModal";
+import { AuthModal } from "@/components/AuthModal";
+import { supabase } from "@/integrations/supabase/client";
+import { Session, User } from '@supabase/supabase-js';
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 export function Layout({ children }: LayoutProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState<'partner' | 'user' | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
-    // Check if user is already logged in
-    const storedUser = localStorage.getItem('bldr-user');
-    if (storedUser) {
-      const userData = JSON.parse(storedUser);
-      setIsAuthenticated(true);
-      setUserRole(userData.role);
-    }
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const handleLogin = (role: 'partner' | 'user') => {
-    setIsAuthenticated(true);
-    setUserRole(role);
-    localStorage.setItem('bldr-user', JSON.stringify({ role, loginTime: Date.now() }));
+  const handleAuthSuccess = () => {
+    // Auth state will be handled by the listener
   };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setUserRole(null);
-    localStorage.removeItem('bldr-user');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
   };
 
-  if (!isAuthenticated) {
-    return <LoginModal onLogin={handleLogin} />;
+  if (!user) {
+    return <AuthModal onAuthSuccess={handleAuthSuccess} />;
   }
 
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
-        <AppSidebar userRole={userRole} onLogout={handleLogout} />
+        <AppSidebar onLogout={handleLogout} />
         
         <div className="flex-1 flex flex-col">
           <header className="h-16 flex items-center justify-between border-b border-border bg-card px-6">
@@ -53,14 +61,17 @@ export function Layout({ children }: LayoutProps) {
             
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground">
-                {userRole === 'partner' ? 'Sócio' : 'Usuário'}
+                {user.email}
               </span>
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={handleLogout}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="text-muted-foreground hover:text-foreground"
               >
+                <LogOut className="w-4 h-4 mr-2" />
                 Sair
-              </button>
+              </Button>
             </div>
           </header>
           

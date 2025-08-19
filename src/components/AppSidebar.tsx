@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/sidebar";
 
 interface AppSidebarProps {
-  userRole: 'partner' | 'user' | null;
   onLogout: () => void;
 }
 
@@ -45,12 +44,13 @@ const userItems = [
   { title: "Serviços", url: "/estoque", icon: Package },
 ];
 
-export function AppSidebar({ userRole, onLogout }: AppSidebarProps) {
+export function AppSidebar({ onLogout }: AppSidebarProps) {
   const { state } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
   
-  const items = userRole === 'partner' ? partnerItems : userItems;
+  // For now, show all items. Later can be customized based on user profile
+  const items = partnerItems;
   const isCollapsed = state === "collapsed";
 
   const isActive = (path: string) => currentPath === path;
@@ -68,7 +68,7 @@ export function AppSidebar({ userRole, onLogout }: AppSidebarProps) {
               <div>
                 <h2 className="text-xl font-bold text-foreground">BLDR</h2>
                 <p className="text-xs text-muted-foreground">
-                  {userRole === 'partner' ? 'Painel do Sócio' : 'Painel do Usuário'}
+                  Sistema de Gestão
                 </p>
               </div>
             )}
