@@ -2,57 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+/* BLDR Design System - Black & Gold Theme
 All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 0 0% 2%;
+    --foreground: 45 100% 85%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 6%;
+    --card-foreground: 45 100% 85%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 45 100% 85%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 45 100% 55%;
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 45 100% 85%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 0 0% 8%;
+    --muted-foreground: 45 20% 65%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 45 100% 55%;
+    --accent-foreground: 0 0% 0%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 0 0% 15%;
+    --input: 0 0% 10%;
+    --ring: 45 100% 55%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
+    
+    /* BLDR Custom Colors */
+    --bldr-gold: 45 100% 55%;
+    --bldr-gold-light: 45 100% 65%;
+    --bldr-gold-dark: 45 100% 45%;
+    --bldr-black: 0 0% 2%;
+    --bldr-black-light: 0 0% 8%;
+    --bldr-black-dark: 0 0% 0%;
+    
+    /* Gradients */
+    --gradient-gold: linear-gradient(135deg, hsl(var(--bldr-gold)), hsl(var(--bldr-gold-light)));
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--bldr-black-light)));
+    
+    /* Shadows */
+    --shadow-gold: 0 10px 30px -10px hsl(var(--bldr-gold) / 0.3);
+    --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.3);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar customization */
+    --sidebar-background: 0 0% 4%;
+    --sidebar-foreground: 45 100% 85%;
+    --sidebar-primary: 45 100% 55%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 8%;
+    --sidebar-accent-foreground: 45 100% 85%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 45 100% 55%;
   }
 
   .dark {
