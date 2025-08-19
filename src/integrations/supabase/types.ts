@@ -50,6 +50,93 @@ export type Database = {
         }
         Relationships: []
       }
+      departments: {
+        Row: {
+          budget: number | null
+          created_at: string
+          employee_count: number | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          budget?: number | null
+          created_at?: string
+          employee_count?: number | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          budget?: number | null
+          created_at?: string
+          employee_count?: number | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      employees: {
+        Row: {
+          address: string | null
+          admission_date: string
+          created_at: string
+          department: string
+          email: string | null
+          employee_id: string
+          full_name: string
+          id: string
+          is_active: boolean
+          phone: string | null
+          position: string
+          salary: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          admission_date: string
+          created_at?: string
+          department: string
+          email?: string | null
+          employee_id: string
+          full_name: string
+          id?: string
+          is_active?: boolean
+          phone?: string | null
+          position: string
+          salary: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          admission_date?: string
+          created_at?: string
+          department?: string
+          email?: string | null
+          employee_id?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          phone?: string | null
+          position?: string
+          salary?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       exercises: {
         Row: {
           created_at: string | null
@@ -314,6 +401,95 @@ export type Database = {
           id?: string
           role?: string | null
           updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          client_name: string
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          notes: string | null
+          service_id: string | null
+          start_date: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_name: string
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          service_id?: string | null
+          start_date: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_name?: string
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          service_id?: string | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reports: {
+        Row: {
+          category: string
+          file_path: string | null
+          file_size: number | null
+          format: string | null
+          generated_at: string
+          id: string
+          name: string
+          parameters: Json | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          file_path?: string | null
+          file_size?: number | null
+          format?: string | null
+          generated_at?: string
+          id?: string
+          name: string
+          parameters?: Json | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          file_path?: string | null
+          file_size?: number | null
+          format?: string | null
+          generated_at?: string
+          id?: string
+          name?: string
+          parameters?: Json | null
+          type?: string
           user_id?: string
         }
         Relationships: []

@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Users, 
   UserPlus,
@@ -10,82 +12,126 @@ import {
   Calendar,
   FileText,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  Edit,
+  Trash2
 } from "lucide-react";
+import { toast } from "sonner";
+import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
+import { useUserRole } from "@/hooks/useUserRole";
+import { EmployeeModal } from "@/components/modals/EmployeeModal";
+import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
+import { ReportFilterModal, ReportFilters } from "@/components/modals/ReportFilterModal";
+import { formatCurrency, exportToCSV } from "@/utils/csvExport";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Employee {
+  id: string;
+  employee_id: string;
+  full_name: string;
+  position: string;
+  department: string;
+  salary: number;
+  admission_date: string;
+  status: string;
+  email?: string;
+  phone?: string;
+}
 
 export function RH() {
-  const hrData = {
-    totalEmployees: 24,
-    activeEmployees: 22,
-    onLeave: 2,
-    totalPayroll: "R$ 45.280,00"
-  };
+  const { canWrite } = useUserRole();
+  const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [reportFilterOpen, setReportFilterOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
-  const employees = [
-    { 
-      id: "E001", 
-      name: "Ana Costa", 
-      position: "Gerente de Vendas",
-      department: "Vendas",
-      salary: "R$ 4.500,00",
-      admissionDate: "2022-03-15",
-      status: "Ativo"
-    },
-    { 
-      id: "E002", 
-      name: "Pedro Lima", 
-      position: "Vendedor",
-      department: "Vendas",
-      salary: "R$ 2.800,00",
-      admissionDate: "2023-01-10",
-      status: "Ativo"
-    },
-    { 
-      id: "E003", 
-      name: "Carlos Silva", 
-      position: "Vendedor",
-      department: "Vendas",
-      salary: "R$ 2.600,00",
-      admissionDate: "2023-06-20",
-      status: "Ativo"
-    },
-    { 
-      id: "E004", 
-      name: "Maria Santos", 
-      position: "Auxiliar Administrativo",
-      department: "Administrativo",
-      salary: "R$ 1.800,00",
-      admissionDate: "2023-09-05",
-      status: "Férias"
-    },
-  ];
+  const employeesQuery = useSupabaseQuery<Employee>({
+    table: 'employees',
+    select: '*',
+    filters: [{ column: 'is_active', operator: 'eq', value: true }],
+    orderBy: { column: 'created_at', ascending: false }
+  });
 
-  const departments = [
-    { name: "Vendas", employees: 8, budget: "R$ 24.500,00" },
-    { name: "Administrativo", employees: 6, budget: "R$ 12.800,00" },
-    { name: "Operacional", employees: 7, budget: "R$ 15.200,00" },
-    { name: "Gerência", employees: 3, budget: "R$ 18.600,00" },
-  ];
+  const departmentsQuery = useSupabaseQuery({
+    table: 'departments',
+    select: '*',
+    orderBy: { column: 'name', ascending: true }
+  });
 
-  const recentActivities = [
-    { id: 1, type: "Admissão", employee: "João Santos", date: "2024-01-10", details: "Novo vendedor contratado" },
-    { id: 2, type: "Férias", employee: "Maria Santos", date: "2024-01-08", details: "Período de 15 dias" },
-    { id: 3, type: "Promoção", employee: "Ana Costa", date: "2024-01-05", details: "Promovida a Gerente de Vendas" },
-    { id: 4, type: "Avaliação", employee: "Pedro Lima", date: "2024-01-03", details: "Avaliação de desempenho concluída" },
-  ];
+  // Calculate KPIs
+  const totalEmployees = employeesQuery.data.length;
+  const activeEmployees = employeesQuery.data.filter(e => e.status === 'active').length;
+  const onLeave = employeesQuery.data.filter(e => e.status === 'on_vacation' || e.status === 'on_leave').length;
+  const totalPayroll = employeesQuery.data.reduce((sum, emp) => sum + (emp.salary || 0), 0);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'Ativo':
+      case 'active':
         return <Badge variant="default" className="bg-green-500/20 text-green-600 border-green-500/30">Ativo</Badge>;
-      case 'Férias':
+      case 'on_vacation':
         return <Badge variant="secondary" className="bg-blue-500/20 text-blue-600 border-blue-500/30">Férias</Badge>;
-      case 'Afastado':
-        return <Badge variant="destructive">Afastado</Badge>;
+      case 'on_leave':
+        return <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30">Afastado</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
+
+  const handleDeleteEmployee = async () => {
+    if (!selectedEmployee) return;
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .update({ is_active: false })
+        .eq('id', selectedEmployee.id);
+      if (error) throw error;
+      toast.success("Funcionário removido com sucesso!");
+      employeesQuery.refetch();
+    } catch (error: any) {
+      toast.error("Erro ao remover funcionário: " + error.message);
+    }
+  };
+
+  const handleExportReport = async (filters: ReportFilters) => {
+    try {
+      let query = supabase.from('employees').select('*');
+      
+      if (filters.department) {
+        query = query.eq('department', filters.department);
+      }
+      if (filters.status) {
+        query = query.eq('status', filters.status);
+      }
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      
+      const csvData = data?.map(emp => ({
+        'ID': emp.employee_id,
+        'Nome': emp.full_name,
+        'Cargo': emp.position,
+        'Departamento': emp.department,
+        'Salário': emp.salary,
+        'Admissão': emp.admission_date,
+        'Status': emp.status
+      })) || [];
+      
+      exportToCSV(csvData, `funcionarios-${new Date().toISOString().split('T')[0]}`);
+      toast.success("Relatório exportado com sucesso!");
+    } catch (error: any) {
+      toast.error("Erro ao exportar relatório: " + error.message);
+    }
+  };
+
+  if (employeesQuery.error) {
+    return (
+      <div className="text-center p-8">
+        <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+        <h3 className="text-lg font-semibold">Erro ao carregar dados</h3>
+        <p className="text-muted-foreground">{employeesQuery.error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -95,13 +141,18 @@ export function RH() {
           <h1 className="text-3xl font-bold text-foreground">Recursos Humanos</h1>
           <p className="text-muted-foreground">Gestão completa de pessoal da BLDR</p>
         </div>
-        <Button 
-          className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
-          onClick={() => alert('Abrindo formulário para novo funcionário')}
-        >
-          <UserPlus className="w-4 h-4 mr-2" />
-          Novo Funcionário
-        </Button>
+        {canWrite && (
+          <Button 
+            className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
+            onClick={() => {
+              setSelectedEmployee(null);
+              setEmployeeModalOpen(true);
+            }}
+          >
+            <UserPlus className="w-4 h-4 mr-2" />
+            Novo Funcionário
+          </Button>
+        )}
       </div>
 
       {/* HR KPIs */}
@@ -114,7 +165,11 @@ export function RH() {
             <Users className="h-5 w-5 text-bldr-gold" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{hrData.totalEmployees}</div>
+            {employeesQuery.loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold text-foreground">{totalEmployees}</div>
+            )}
             <p className="text-xs text-muted-foreground">colaboradores registrados</p>
           </CardContent>
         </Card>
@@ -127,7 +182,11 @@ export function RH() {
             <TrendingUp className="h-5 w-5 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{hrData.activeEmployees}</div>
+            {employeesQuery.loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold text-foreground">{activeEmployees}</div>
+            )}
             <p className="text-xs text-muted-foreground">em atividade</p>
           </CardContent>
         </Card>
@@ -140,7 +199,11 @@ export function RH() {
             <Clock className="h-5 w-5 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{hrData.onLeave}</div>
+            {employeesQuery.loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold text-foreground">{onLeave}</div>
+            )}
             <p className="text-xs text-muted-foreground">temporariamente ausentes</p>
           </CardContent>
         </Card>
@@ -153,7 +216,11 @@ export function RH() {
             <DollarSign className="h-5 w-5 text-bldr-gold" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{hrData.totalPayroll}</div>
+            {employeesQuery.loading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <div className="text-2xl font-bold text-foreground">{formatCurrency(totalPayroll)}</div>
+            )}
             <p className="text-xs text-muted-foreground">total mensal</p>
           </CardContent>
         </Card>
@@ -161,10 +228,9 @@ export function RH() {
 
       {/* HR Tabs */}
       <Tabs defaultValue="employees" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 bg-muted">
+        <TabsList className="grid w-full grid-cols-3 bg-muted">
           <TabsTrigger value="employees">Funcionários</TabsTrigger>
           <TabsTrigger value="departments">Departamentos</TabsTrigger>
-          <TabsTrigger value="activities">Atividades</TabsTrigger>
           <TabsTrigger value="reports">Relatórios</TabsTrigger>
         </TabsList>
 
@@ -175,47 +241,73 @@ export function RH() {
               <CardDescription>Gestão completa da equipe</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {employees.map((employee) => (
-                  <div key={employee.id} className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <p className="font-medium text-foreground">{employee.name}</p>
-                          <p className="text-sm text-muted-foreground">{employee.position} • {employee.department}</p>
+              {employeesQuery.loading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="p-4 rounded-lg border border-border">
+                      <Skeleton className="h-6 w-48 mb-2" />
+                      <Skeleton className="h-4 w-32 mb-2" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  ))}
+                </div>
+              ) : employeesQuery.data.length === 0 ? (
+                <div className="text-center p-8">
+                  <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground">Nenhum funcionário encontrado</h3>
+                  <p className="text-muted-foreground">Não há funcionários cadastrados ainda.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {employeesQuery.data.map((employee) => (
+                    <div key={employee.id} className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors">
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <p className="font-medium text-foreground">{employee.full_name}</p>
+                            <p className="text-sm text-muted-foreground">{employee.position} • {employee.department}</p>
+                          </div>
+                          {getStatusBadge(employee.status)}
                         </div>
-                        {getStatusBadge(employee.status)}
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">
-                            ID: {employee.id} • Admissão: {employee.admissionDate}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-foreground">{employee.salary}</p>
-                          <div className="flex space-x-1">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => alert('Abrindo documentos do funcionário')}
-                            >
-                              <FileText className="w-3 h-3" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => alert('Gerenciando férias e horários')}
-                            >
-                              <Calendar className="w-3 h-3" />
-                            </Button>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              ID: {employee.employee_id} • Admissão: {new Date(employee.admission_date).toLocaleDateString('pt-BR')}
+                            </p>
+                          </div>
+                          <div className="text-right flex items-center gap-2">
+                            <p className="text-lg font-bold text-foreground">{formatCurrency(employee.salary)}</p>
+                            {canWrite && (
+                              <div className="flex space-x-1">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedEmployee(employee);
+                                    setEmployeeModalOpen(true);
+                                  }}
+                                >
+                                  <Edit className="w-3 h-3" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedEmployee(employee);
+                                    setDeleteModalOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -227,133 +319,78 @@ export function RH() {
               <CardDescription>Organização por área</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                {departments.map((dept, index) => (
-                  <div key={index} className="p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                    <div className="flex justify-between items-center mb-3">
-                      <h3 className="font-medium text-foreground">{dept.name}</h3>
-                      <Badge variant="outline" className="border-bldr-gold text-bldr-gold">
-                        {dept.employees} pessoas
-                      </Badge>
+              {departmentsQuery.loading ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="p-4 rounded-lg border border-border">
+                      <Skeleton className="h-6 w-32 mb-2" />
+                      <Skeleton className="h-8 w-24" />
                     </div>
-                    <p className="text-lg font-bold text-foreground mb-2">{dept.budget}</p>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div 
-                        className="bg-bldr-gold h-2 rounded-full" 
-                        style={{ width: `${(dept.employees / 10) * 100}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Orçamento mensal</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="activities" className="space-y-4">
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-foreground">Atividades Recentes</CardTitle>
-              <CardDescription>Histórico de movimentações de RH</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-center justify-between p-4 rounded-lg border border-border">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-3 h-3 rounded-full bg-bldr-gold" />
-                      <div>
-                        <p className="font-medium text-foreground">{activity.employee}</p>
-                        <p className="text-sm text-muted-foreground">{activity.details}</p>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {departmentsQuery.data.map((dept: any) => (
+                    <div key={dept.id} className="p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors">
+                      <div className="flex justify-between items-center mb-3">
+                        <h3 className="font-medium text-foreground">{dept.name}</h3>
+                        <Badge variant="outline" className="border-bldr-gold text-bldr-gold">
+                          {employeesQuery.data.filter(e => e.department === dept.name).length} pessoas
+                        </Badge>
                       </div>
+                      <p className="text-lg font-bold text-foreground mb-2">{formatCurrency(dept.budget || 0)}</p>
+                      <p className="text-xs text-muted-foreground">Orçamento mensal</p>
                     </div>
-                    <div className="text-right">
-                      <Badge variant="outline">{activity.type}</Badge>
-                      <p className="text-xs text-muted-foreground mt-1">{activity.date}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="reports" className="space-y-4">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="text-foreground">Relatórios de RH</CardTitle>
-                <CardDescription>Gere relatórios de recursos humanos</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => alert('Gerando relatório de funcionários')}
-                >
-                  <Users className="w-4 h-4 mr-2" />
-                  Relatório de Funcionários
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => alert('Processando folha de pagamento')}
-                >
-                  <DollarSign className="w-4 h-4 mr-2" />
-                  Folha de Pagamento
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => alert('Abrindo controle de férias')}
-                >
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Controle de Férias
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => alert('Iniciando avaliações de desempenho')}
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Avaliações de Desempenho
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="text-foreground">Alertas de RH</CardTitle>
-                <CardDescription>Notificações importantes</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                  <div className="flex items-center space-x-2">
-                    <AlertCircle className="w-4 h-4 text-yellow-600" />
-                    <p className="text-sm font-medium text-yellow-600">Atenção</p>
-                  </div>
-                  <p className="text-xs text-yellow-600/80 mt-1">3 funcionários com férias vencendo em 30 dias</p>
-                </div>
-                <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="w-4 h-4 text-blue-600" />
-                    <p className="text-sm font-medium text-blue-600">Lembrete</p>
-                  </div>
-                  <p className="text-xs text-blue-600/80 mt-1">Avaliações de desempenho do trimestre pendentes</p>
-                </div>
-                <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                  <div className="flex items-center space-x-2">
-                    <Users className="w-4 h-4 text-green-600" />
-                    <p className="text-sm font-medium text-green-600">Informação</p>
-                  </div>
-                  <p className="text-xs text-green-600/80 mt-1">Novo funcionário inicia na próxima segunda-feira</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="text-foreground">Relatórios de RH</CardTitle>
+              <CardDescription>Gere relatórios de recursos humanos</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={() => setReportFilterOpen(true)}
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Exportar Relatório de Funcionários
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Modals */}
+      <EmployeeModal
+        open={employeeModalOpen}
+        onOpenChange={setEmployeeModalOpen}
+        employee={selectedEmployee}
+        onSuccess={() => employeesQuery.refetch()}
+      />
+
+      <DeleteConfirmModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        title="Remover Funcionário"
+        description="Tem certeza que deseja remover este funcionário? Esta ação irá marcá-lo como inativo."
+        itemName={selectedEmployee?.full_name || ""}
+        onConfirm={handleDeleteEmployee}
+      />
+
+      <ReportFilterModal
+        open={reportFilterOpen}
+        onOpenChange={setReportFilterOpen}
+        reportType="hr"
+        onApplyFilters={handleExportReport}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,12 +8,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
+interface Service {
+  id?: string;
+  name: string;
+  category: string;
+  price: number;
+  description: string;
+  is_active: boolean;
+}
+
 interface ServiceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  service?: Service | null;
+  onSuccess?: () => void;
 }
 
-export function ServiceModal({ open, onOpenChange }: ServiceModalProps) {
+export function ServiceModal({ open, onOpenChange, service, onSuccess }: ServiceModalProps) {
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -21,6 +32,25 @@ export function ServiceModal({ open, onOpenChange }: ServiceModalProps) {
     description: ""
   });
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (service) {
+      setFormData({
+        name: service.name,
+        category: service.category,
+        price: service.price.toString(),
+        description: service.description || ""
+      });
+    } else {
+      // Reset form for new service
+      setFormData({
+        name: "",
+        category: "",
+        price: "",
+        description: ""
+      });
+    }
+  }, [service, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,33 +68,41 @@ export function ServiceModal({ open, onOpenChange }: ServiceModalProps) {
         return;
       }
 
-      const { error } = await supabase.from('services').insert({
+      const serviceData = {
         user_id: user.id,
         name: formData.name,
         category: formData.category,
         price: parseFloat(formData.price),
         description: formData.description,
         is_active: true
-      });
+      };
+
+      let error;
+      if (service?.id) {
+        // Update existing service
+        const result = await supabase
+          .from('services')
+          .update(serviceData)
+          .eq('id', service.id);
+        error = result.error;
+      } else {
+        // Create new service
+        const result = await supabase
+          .from('services')
+          .insert(serviceData);
+        error = result.error;
+      }
 
       if (error) {
-        toast.error("Erro ao cadastrar serviço: " + error.message);
+        toast.error("Erro ao salvar serviço: " + error.message);
         return;
       }
 
-      toast.success("Serviço cadastrado com sucesso!");
-      
-      // Reset form
-      setFormData({
-        name: "",
-        category: "",
-        price: "",
-        description: ""
-      });
-      
+      toast.success(service ? "Serviço atualizado com sucesso!" : "Serviço cadastrado com sucesso!");
+      onSuccess?.();
       onOpenChange(false);
     } catch (error) {
-      toast.error("Erro inesperado ao cadastrar serviço");
+      toast.error("Erro inesperado ao salvar serviço");
     } finally {
       setLoading(false);
     }
@@ -74,9 +112,11 @@ export function ServiceModal({ open, onOpenChange }: ServiceModalProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle className="text-foreground">Novo Serviço</DialogTitle>
+          <DialogTitle className="text-foreground">
+            {service ? "Editar Serviço" : "Novo Serviço"}
+          </DialogTitle>
           <DialogDescription>
-            Cadastre um novo serviço no catálogo da BLDR.
+            {service ? "Atualize as informações do serviço." : "Cadastre um novo serviço no catálogo da BLDR."}
           </DialogDescription>
         </DialogHeader>
         
@@ -142,7 +182,7 @@ export function ServiceModal({ open, onOpenChange }: ServiceModalProps) {
               className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
               disabled={loading}
             >
-              {loading ? "Cadastrando..." : "Cadastrar Serviço"}
+              {loading ? "Salvando..." : (service ? "Atualizar Serviço" : "Cadastrar Serviço")}
             </Button>
           </div>
         </form>
