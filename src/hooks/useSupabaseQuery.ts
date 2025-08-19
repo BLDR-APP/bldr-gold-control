@@ -20,6 +20,19 @@ export function useSupabaseQuery<T = any>(options: UseSupabaseQueryOptions) {
       setLoading(true);
       setError(null);
 
+      console.log('🔍 useSupabaseQuery: Starting query for table:', options.table);
+      
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('👤 useSupabaseQuery: Current user:', user ? 'Authenticated' : 'Not authenticated');
+      
+      if (!user) {
+        console.warn('⚠️ useSupabaseQuery: No authenticated user found');
+        setData([]);
+        setLoading(false);
+        return;
+      }
+
       let query = supabase
         .from(options.table as any)
         .select(options.select || '*');
@@ -41,12 +54,18 @@ export function useSupabaseQuery<T = any>(options: UseSupabaseQueryOptions) {
         query = query.limit(options.limit);
       }
 
+      console.log('🚀 useSupabaseQuery: Executing query...');
       const { data: result, error: queryError } = await query;
 
-      if (queryError) throw queryError;
+      if (queryError) {
+        console.error('❌ useSupabaseQuery: Query error:', queryError);
+        throw queryError;
+      }
 
+      console.log('✅ useSupabaseQuery: Query successful, result count:', result?.length || 0);
       setData((result as T[]) || []);
     } catch (err: any) {
+      console.error('💥 useSupabaseQuery: Error in fetchData:', err);
       setError(err.message);
     } finally {
       setLoading(false);

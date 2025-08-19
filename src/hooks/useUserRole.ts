@@ -8,9 +8,12 @@ export function useUserRole() {
   useEffect(() => {
     async function fetchUserRole() {
       try {
+        console.log('🔍 useUserRole: Fetching user authentication status...');
         const { data: { user } } = await supabase.auth.getUser();
+        console.log('👤 useUserRole: User found:', user ? `ID: ${user.id}` : 'No user');
         
         if (user) {
+          console.log('🔍 useUserRole: Fetching user profile...');
           const { data: profile, error } = await supabase
             .from('profiles')
             .select('role')
@@ -18,11 +21,15 @@ export function useUserRole() {
             .single();
 
           if (error) {
-            console.error('Error fetching user role:', error);
+            console.error('❌ useUserRole: Error fetching user role:', error);
             setRole('user');
           } else {
+            console.log('✅ useUserRole: Profile found, role:', profile?.role || 'user');
             setRole(profile?.role || 'user');
           }
+        } else {
+          console.warn('⚠️ useUserRole: No authenticated user, setting default role');
+          setRole(null);
         }
       } catch (error) {
         console.error('Error in fetchUserRole:', error);
