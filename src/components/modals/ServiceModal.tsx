@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ServiceModalProps {
   open: boolean;
@@ -17,35 +18,56 @@ export function ServiceModal({ open, onOpenChange }: ServiceModalProps) {
     name: "",
     category: "",
     price: "",
-    duration: "",
-    description: "",
-    responsible: "",
-    status: "ativo"
+    description: ""
   });
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.category || !formData.price || !formData.duration) {
+    if (!formData.name || !formData.category || !formData.price) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
 
-    // Aqui você integraria com seu backend/API
-    toast.success("Serviço cadastrado com sucesso!");
-    
-    // Reset form
-    setFormData({
-      name: "",
-      category: "",
-      price: "",
-      duration: "",
-      description: "",
-      responsible: "",
-      status: "ativo"
-    });
-    
-    onOpenChange(false);
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Usuário não autenticado");
+        return;
+      }
+
+      const { error } = await supabase.from('services').insert({
+        user_id: user.id,
+        name: formData.name,
+        category: formData.category,
+        price: parseFloat(formData.price),
+        description: formData.description,
+        is_active: true
+      });
+
+      if (error) {
+        toast.error("Erro ao cadastrar serviço: " + error.message);
+        return;
+      }
+
+      toast.success("Serviço cadastrado com sucesso!");
+      
+      // Reset form
+      setFormData({
+        name: "",
+        category: "",
+        price: "",
+        description: ""
+      });
+      
+      onOpenChange(false);
+    } catch (error) {
+      toast.error("Erro inesperado ao cadastrar serviço");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -101,42 +123,6 @@ export function ServiceModal({ open, onOpenChange }: ServiceModalProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="duration">Duração*</Label>
-              <Input
-                id="duration"
-                placeholder="Ex: 3 meses, 2 semanas"
-                value={formData.duration}
-                onChange={(e) => setFormData(prev => ({...prev, duration: e.target.value}))}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="responsible">Responsável</Label>
-              <Input
-                id="responsible"
-                placeholder="Nome do responsável"
-                value={formData.responsible}
-                onChange={(e) => setFormData(prev => ({...prev, responsible: e.target.value}))}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
-            <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({...prev, status: value}))}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ativo">Ativo</SelectItem>
-                <SelectItem value="inativo">Inativo</SelectItem>
-                <SelectItem value="desenvolvimento">Em Desenvolvimento</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="description">Descrição</Label>
             <Textarea
@@ -151,8 +137,12 @@ export function ServiceModal({ open, onOpenChange }: ServiceModalProps) {
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground">
-              Cadastrar Serviço
+            <Button 
+              type="submit" 
+              className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
+              disabled={loading}
+            >
+              {loading ? "Cadastrando..." : "Cadastrar Serviço"}
             </Button>
           </div>
         </form>

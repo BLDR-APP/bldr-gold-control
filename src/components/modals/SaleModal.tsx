@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SaleModalProps {
   open: boolean;
@@ -17,50 +18,97 @@ export function SaleModal({ open, onOpenChange }: SaleModalProps) {
     clientName: "",
     clientEmail: "",
     clientPhone: "",
-    services: [],
-    value: "",
-    seller: "",
+    serviceId: "",
+    amount: "",
     paymentMethod: "",
-    installments: "1",
     notes: "",
-    deliveryDate: ""
+    saleDate: new Date().toISOString().split('T')[0]
   });
+  const [services, setServices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const availableServices = [
-    "Consultoria Estratégica",
-    "Auditoria Empresarial", 
-    "Gestão de Projetos",
-    "Análise de Mercado",
-    "Treinamento Corporativo",
-    "Planejamento Financeiro"
-  ];
+  useEffect(() => {
+    if (open) {
+      fetchServices();
+    }
+  }, [open]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const fetchServices = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
+      if (error) {
+        console.error('Erro ao buscar serviços:', error);
+        return;
+      }
+
+      setServices(data || []);
+    } catch (error) {
+      console.error('Erro inesperado ao buscar serviços:', error);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.clientName || !formData.value || !formData.seller) {
+    if (!formData.clientName || !formData.amount || !formData.serviceId) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
 
-    // Aqui você integraria com seu backend/API
-    toast.success("Venda registrada com sucesso!");
-    
-    // Reset form
-    setFormData({
-      clientName: "",
-      clientEmail: "",
-      clientPhone: "",
-      services: [],
-      value: "",
-      seller: "",
-      paymentMethod: "",
-      installments: "1",
-      notes: "",
-      deliveryDate: ""
-    });
-    
-    onOpenChange(false);
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Usuário não autenticado");
+        return;
+      }
+
+      const { error } = await supabase.from('sales').insert({
+        user_id: user.id,
+        service_id: formData.serviceId,
+        client_name: formData.clientName,
+        client_email: formData.clientEmail || null,
+        client_phone: formData.clientPhone || null,
+        amount: parseFloat(formData.amount),
+        payment_method: formData.paymentMethod || null,
+        notes: formData.notes || null,
+        sale_date: formData.saleDate,
+        status: 'completed'
+      });
+
+      if (error) {
+        toast.error("Erro ao registrar venda: " + error.message);
+        return;
+      }
+
+      toast.success("Venda registrada com sucesso!");
+      
+      // Reset form
+      setFormData({
+        clientName: "",
+        clientEmail: "",
+        clientPhone: "",
+        serviceId: "",
+        amount: "",
+        paymentMethod: "",
+        notes: "",
+        saleDate: new Date().toISOString().split('T')[0]
+      });
+      
+      onOpenChange(false);
+    } catch (error) {
+      toast.error("Erro inesperado ao registrar venda");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -117,14 +165,16 @@ export function SaleModal({ open, onOpenChange }: SaleModalProps) {
             <h3 className="text-sm font-medium text-bldr-gold border-b border-border pb-1">Dados da Venda</h3>
             
             <div className="space-y-2">
-              <Label htmlFor="services">Serviços</Label>
-              <Select>
+              <Label htmlFor="serviceId">Serviço*</Label>
+              <Select value={formData.serviceId} onValueChange={(value) => setFormData(prev => ({...prev, serviceId: value}))}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione os serviços vendidos" />
+                  <SelectValue placeholder="Selecione o serviço vendido" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableServices.map(service => (
-                    <SelectItem key={service} value={service}>{service}</SelectItem>
+                  {services.map(service => (
+                    <SelectItem key={service.id} value={service.id}>
+                      {service.name} - R$ {service.price.toFixed(2)}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -132,74 +182,43 @@ export function SaleModal({ open, onOpenChange }: SaleModalProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="value">Valor Total*</Label>
+                <Label htmlFor="amount">Valor Total*</Label>
                 <Input
-                  id="value"
+                  id="amount"
                   type="number"
                   step="0.01"
                   placeholder="0,00"
-                  value={formData.value}
-                  onChange={(e) => setFormData(prev => ({...prev, value: e.target.value}))}
+                  value={formData.amount}
+                  onChange={(e) => setFormData(prev => ({...prev, amount: e.target.value}))}
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="seller">Vendedor*</Label>
-                <Select value={formData.seller} onValueChange={(value) => setFormData(prev => ({...prev, seller: value}))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o vendedor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ana-costa">Ana Costa</SelectItem>
-                    <SelectItem value="pedro-lima">Pedro Lima</SelectItem>
-                    <SelectItem value="carlos-silva">Carlos Silva</SelectItem>
-                    <SelectItem value="lucia-ferreira">Lucia Ferreira</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
-                <Select value={formData.paymentMethod} onValueChange={(value) => setFormData(prev => ({...prev, paymentMethod: value}))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                    <SelectItem value="pix">PIX</SelectItem>
-                    <SelectItem value="cartao-credito">Cartão de Crédito</SelectItem>
-                    <SelectItem value="cartao-debito">Cartão de Débito</SelectItem>
-                    <SelectItem value="transferencia">Transferência</SelectItem>
-                    <SelectItem value="boleto">Boleto</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="installments">Parcelas</Label>
-                <Select value={formData.installments} onValueChange={(value) => setFormData(prev => ({...prev, installments: value}))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({length: 12}, (_, i) => i + 1).map(num => (
-                      <SelectItem key={num} value={num.toString()}>{num}x</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="saleDate">Data da Venda</Label>
+                <Input
+                  id="saleDate"
+                  type="date"
+                  value={formData.saleDate}
+                  onChange={(e) => setFormData(prev => ({...prev, saleDate: e.target.value}))}
+                />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="deliveryDate">Data de Entrega</Label>
-              <Input
-                id="deliveryDate"
-                type="date"
-                value={formData.deliveryDate}
-                onChange={(e) => setFormData(prev => ({...prev, deliveryDate: e.target.value}))}
-              />
+              <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
+              <Select value={formData.paymentMethod} onValueChange={(value) => setFormData(prev => ({...prev, paymentMethod: value}))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                  <SelectItem value="pix">PIX</SelectItem>
+                  <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                  <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                  <SelectItem value="transferencia">Transferência</SelectItem>
+                  <SelectItem value="boleto">Boleto</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -217,8 +236,12 @@ export function SaleModal({ open, onOpenChange }: SaleModalProps) {
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground">
-              Registrar Venda
+            <Button 
+              type="submit" 
+              className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
+              disabled={loading}
+            >
+              {loading ? "Registrando..." : "Registrar Venda"}
             </Button>
           </div>
         </form>

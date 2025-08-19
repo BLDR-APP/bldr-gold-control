@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TransactionModalProps {
   open: boolean;
@@ -19,10 +20,11 @@ export function TransactionModal({ open, onOpenChange }: TransactionModalProps) 
     type: "",
     category: "",
     date: new Date().toISOString().split('T')[0],
-    notes: ""
+    payment_method: ""
   });
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.description || !formData.amount || !formData.type || !formData.category) {
@@ -30,20 +32,47 @@ export function TransactionModal({ open, onOpenChange }: TransactionModalProps) 
       return;
     }
 
-    // Aqui você integraria com seu backend/API
-    toast.success("Transação registrada com sucesso!");
-    
-    // Reset form
-    setFormData({
-      description: "",
-      amount: "",
-      type: "",
-      category: "",
-      date: new Date().toISOString().split('T')[0],
-      notes: ""
-    });
-    
-    onOpenChange(false);
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Usuário não autenticado");
+        return;
+      }
+
+      const { error } = await supabase.from('transactions').insert({
+        user_id: user.id,
+        description: formData.description,
+        amount: parseFloat(formData.amount),
+        type: formData.type === 'entrada' ? 'income' : 'expense',
+        category: formData.category,
+        date: formData.date,
+        payment_method: formData.payment_method
+      });
+
+      if (error) {
+        toast.error("Erro ao registrar transação: " + error.message);
+        return;
+      }
+
+      toast.success("Transação registrada com sucesso!");
+      
+      // Reset form
+      setFormData({
+        description: "",
+        amount: "",
+        type: "",
+        category: "",
+        date: new Date().toISOString().split('T')[0],
+        payment_method: ""
+      });
+      
+      onOpenChange(false);
+    } catch (error) {
+      toast.error("Erro inesperado ao registrar transação");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -114,32 +143,33 @@ export function TransactionModal({ open, onOpenChange }: TransactionModalProps) 
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="date">Data*</Label>
-              <Input
-                id="date"
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData(prev => ({...prev, date: e.target.value}))}
-              />
+              <Label htmlFor="payment_method">Forma de Pagamento</Label>
+              <Select value={formData.payment_method} onValueChange={(value) => setFormData(prev => ({...prev, payment_method: value}))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                  <SelectItem value="pix">PIX</SelectItem>
+                  <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                  <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                  <SelectItem value="transferencia">Transferência</SelectItem>
+                  <SelectItem value="boleto">Boleto</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="notes">Observações</Label>
-            <Textarea
-              id="notes"
-              placeholder="Observações adicionais (opcional)"
-              value={formData.notes}
-              onChange={(e) => setFormData(prev => ({...prev, notes: e.target.value}))}
-            />
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground">
-              Registrar Transação
+            <Button 
+              type="submit" 
+              className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
+              disabled={loading}
+            >
+              {loading ? "Registrando..." : "Registrar Transação"}
             </Button>
           </div>
         </form>
