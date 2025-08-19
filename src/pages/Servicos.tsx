@@ -67,7 +67,7 @@ export function Servicos() {
     limit: 10
   });
 
-  // ⚠️ Derivados defensivos para evitar TypeError em undefined
+  // Derivados defensivos (evitam crash quando data ainda não chegou)
   const services = servicesQuery.data ?? [];
   const projects = projectsQuery.data ?? [];
 
@@ -80,7 +80,6 @@ export function Servicos() {
   });
 
   useEffect(() => {
-    // usa sempre os derivados (seguros) acima
     const totalServices = services.length;
     const activeProjects = projects.filter(p => p.status === 'active').length;
     const pendingServices = services.filter(s => !s.is_active).length;
@@ -165,7 +164,7 @@ export function Servicos() {
     return acc;
   }, {} as Record<string, { services: number; revenue: number }>);
 
-  // Normaliza mensagem de erro (evita [object Object])
+  // Normaliza a mensagem de erro
   const errorMsg =
     (servicesQuery.error && (servicesQuery.error.message ?? String(servicesQuery.error))) ||
     (projectsQuery.error && (projectsQuery.error.message ?? String(projectsQuery.error)));
@@ -489,6 +488,7 @@ export function Servicos() {
 
       {/* Modals */}
       <ServiceModal
+        key={selectedService?.id ?? "new"}  // garante reset ao alternar entre editar e novo
         open={serviceModalOpen}
         onOpenChange={setServiceModalOpen}
         service={selectedService}
