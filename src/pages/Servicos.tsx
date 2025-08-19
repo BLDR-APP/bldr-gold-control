@@ -211,7 +211,6 @@ export function Servicos() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Atualizar
           </Button>
-          {canWrite && (
             <Button 
               className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
               onClick={() => {
