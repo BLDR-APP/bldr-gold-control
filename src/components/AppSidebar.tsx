@@ -89,7 +89,7 @@ export function AppSidebar({ userRole, onLogout }: AppSidebarProps) {
                         `flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
                           linkActive 
                             ? 'bg-bldr-gold text-bldr-black font-medium' 
-                            : 'text-bldr-gold hover:bg-bldr-black-light hover:text-bldr-gold-light'
+                            : 'text-bldr-gold'
                         }`
                       }
                     >
@@ -107,7 +107,7 @@ export function AppSidebar({ userRole, onLogout }: AppSidebarProps) {
         <div className="mt-auto p-4 border-t border-border">
           <button
             onClick={onLogout}
-            className="flex items-center gap-3 w-full px-3 py-2 text-bldr-gold hover:bg-bldr-black-light hover:text-bldr-gold-light rounded-md transition-colors"
+            className="flex items-center gap-3 w-full px-3 py-2 text-bldr-gold rounded-md transition-colors"
           >
             <LogOut className="w-5 h-5" />
             {!isCollapsed && <span>Sair</span>}

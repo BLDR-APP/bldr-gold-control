@@ -14,10 +14,10 @@ import {
 
 export function Financas() {
   const financialData = {
-    revenue: "R$ 125.430,00",
-    expenses: "R$ 78.250,00",
-    profit: "R$ 47.180,00",
-    cashFlow: "R$ 23.890,00"
+    revenue: "R$ 0,00",
+    expenses: "R$ 0,00",
+    profit: "R$ 0,00",
+    cashFlow: "R$ 0,00"
   };
 
   const transactions = [
@@ -75,11 +75,9 @@ export function Financas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{financialData.revenue}</div>
-            <div className="flex items-center space-x-1 text-xs">
-              <TrendingUp className="h-3 w-3 text-green-500" />
-              <span className="text-green-500">+12.5%</span>
-              <span className="text-muted-foreground">vs mês anterior</span>
-            </div>
+              <div className="flex items-center space-x-1 text-xs">
+                <span className="text-muted-foreground">Aguardando dados</span>
+              </div>
           </CardContent>
         </Card>
 
@@ -92,11 +90,9 @@ export function Financas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{financialData.expenses}</div>
-            <div className="flex items-center space-x-1 text-xs">
-              <TrendingUp className="h-3 w-3 text-red-500" />
-              <span className="text-red-500">+3.2%</span>
-              <span className="text-muted-foreground">vs mês anterior</span>
-            </div>
+              <div className="flex items-center space-x-1 text-xs">
+                <span className="text-muted-foreground">Aguardando dados</span>
+              </div>
           </CardContent>
         </Card>
 
@@ -109,11 +105,9 @@ export function Financas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{financialData.profit}</div>
-            <div className="flex items-center space-x-1 text-xs">
-              <TrendingUp className="h-3 w-3 text-green-500" />
-              <span className="text-green-500">+18.7%</span>
-              <span className="text-muted-foreground">vs mês anterior</span>
-            </div>
+              <div className="flex items-center space-x-1 text-xs">
+                <span className="text-muted-foreground">Aguardando dados</span>
+              </div>
           </CardContent>
         </Card>
 
@@ -126,11 +120,9 @@ export function Financas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{financialData.cashFlow}</div>
-            <div className="flex items-center space-x-1 text-xs">
-              <TrendingUp className="h-3 w-3 text-green-500" />
-              <span className="text-green-500">+5.4%</span>
-              <span className="text-muted-foreground">disponível</span>
-            </div>
+              <div className="flex items-center space-x-1 text-xs">
+                <span className="text-muted-foreground">Aguardando dados</span>
+              </div>
           </CardContent>
         </Card>
       </div>
@@ -151,29 +143,36 @@ export function Financas() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {transactions.map((transaction) => (
-                  <div key={transaction.id} className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center space-x-4">
-                      <div className={`w-3 h-3 rounded-full ${transaction.type === 'entrada' ? 'bg-green-500' : 'bg-red-500'}`} />
-                      <div>
-                        <p className="font-medium text-foreground">{transaction.description}</p>
-                        <div className="flex space-x-2 text-sm text-muted-foreground">
-                          <span>{transaction.date}</span>
-                          <span>•</span>
-                          <span>{transaction.category}</span>
+                {transactions.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <p>Nenhuma transação registrada ainda.</p>
+                    <p className="text-sm mt-2">Comece registrando suas primeiras transações!</p>
+                  </div>
+                ) : (
+                  transactions.map((transaction) => (
+                    <div key={transaction.id} className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center space-x-4">
+                        <div className={`w-3 h-3 rounded-full ${transaction.type === 'entrada' ? 'bg-green-500' : 'bg-red-500'}`} />
+                        <div>
+                          <p className="font-medium text-foreground">{transaction.description}</p>
+                          <div className="flex space-x-2 text-sm text-muted-foreground">
+                            <span>{transaction.date}</span>
+                            <span>•</span>
+                            <span>{transaction.category}</span>
+                          </div>
                         </div>
                       </div>
+                      <div className="text-right">
+                        <p className={`font-medium ${transaction.type === 'entrada' ? 'text-green-500' : 'text-red-500'}`}>
+                          {transaction.type === 'entrada' ? '+' : '-'} {transaction.value}
+                        </p>
+                        <Badge variant="outline" className="text-xs">
+                          {transaction.type === 'entrada' ? 'Entrada' : 'Saída'}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className={`font-medium ${transaction.type === 'entrada' ? 'text-green-500' : 'text-red-500'}`}>
-                        {transaction.type === 'entrada' ? '+' : '-'} {transaction.value}
-                      </p>
-                      <Badge variant="outline" className="text-xs">
-                        {transaction.type === 'entrada' ? 'Entrada' : 'Saída'}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

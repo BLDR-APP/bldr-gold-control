@@ -15,50 +15,13 @@ import {
 
 export function Vendas() {
   const salesData = {
-    totalSales: "R$ 89.430,00",
-    thisMonth: "R$ 23.850,00",
-    target: "R$ 30.000,00",
-    conversion: "12.5%"
+    totalSales: "R$ 0,00",
+    thisMonth: "R$ 0,00",
+    target: "R$ 0,00",
+    conversion: "0%"
   };
 
-  const recentSales = [
-    { 
-      id: "V001", 
-      client: "João Silva", 
-      date: "2024-01-15", 
-      value: "R$ 2.350,00", 
-      status: "Finalizada",
-      services: ["Consultoria Estratégica", "Auditoria"],
-      seller: "Ana Costa"
-    },
-    { 
-      id: "V002", 
-      client: "Maria Santos", 
-      date: "2024-01-15", 
-      value: "R$ 1.890,00", 
-      status: "Processando",
-      services: ["Análise de Mercado"],
-      seller: "Pedro Lima"
-    },
-    { 
-      id: "V003", 
-      client: "Pedro Costa", 
-      date: "2024-01-14", 
-      value: "R$ 3.240,00", 
-      status: "Finalizada",
-      services: ["Consultoria Estratégica", "Gestão de Projetos", "Treinamento"],
-      seller: "Ana Costa"
-    },
-    { 
-      id: "V004", 
-      client: "Ana Paula", 
-      date: "2024-01-14", 
-      value: "R$ 890,00", 
-      status: "Cancelada",
-      services: ["Auditoria"],
-      seller: "Carlos Silva"
-    },
-  ];
+  const recentSales = [];
 
   const salesTargets = [
     { seller: "Ana Costa", target: 15000, achieved: 12350, percentage: 82.3 },
@@ -102,11 +65,9 @@ export function Vendas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{salesData.totalSales}</div>
-            <div className="flex items-center space-x-1 text-xs">
-              <TrendingUp className="h-3 w-3 text-green-500" />
-              <span className="text-green-500">+8.2%</span>
-              <span className="text-muted-foreground">vs mês anterior</span>
-            </div>
+              <div className="flex items-center space-x-1 text-xs">
+                <span className="text-muted-foreground">Aguardando dados</span>
+              </div>
           </CardContent>
         </Card>
 
@@ -119,9 +80,9 @@ export function Vendas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{salesData.thisMonth}</div>
-            <div className="flex items-center space-x-1 text-xs">
-              <span className="text-muted-foreground">de {salesData.target} meta</span>
-            </div>
+              <div className="flex items-center space-x-1 text-xs">
+                <span className="text-muted-foreground">Aguardando dados</span>
+              </div>
           </CardContent>
         </Card>
 
@@ -135,9 +96,9 @@ export function Vendas() {
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{salesData.target}</div>
             <div className="w-full bg-muted rounded-full h-2 mt-2">
-              <div className="bg-bldr-gold h-2 rounded-full" style={{ width: "79.5%" }} />
+              <div className="bg-bldr-gold h-2 rounded-full" style={{ width: "0%" }} />
             </div>
-            <span className="text-xs text-muted-foreground">79.5% atingido</span>
+            <span className="text-xs text-muted-foreground">0% atingido</span>
           </CardContent>
         </Card>
 
@@ -150,11 +111,9 @@ export function Vendas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{salesData.conversion}</div>
-            <div className="flex items-center space-x-1 text-xs">
-              <TrendingUp className="h-3 w-3 text-green-500" />
-              <span className="text-green-500">+2.1%</span>
-              <span className="text-muted-foreground">vs mês anterior</span>
-            </div>
+              <div className="flex items-center space-x-1 text-xs">
+                <span className="text-muted-foreground">Aguardando dados</span>
+              </div>
           </CardContent>
         </Card>
       </div>
@@ -176,44 +135,51 @@ export function Vendas() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentSales.map((sale) => (
-                  <div key={sale.id} className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <p className="font-medium text-foreground">{sale.client}</p>
-                          <p className="text-sm text-muted-foreground">ID: {sale.id} • {sale.date}</p>
+                {recentSales.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <p>Nenhuma venda registrada ainda.</p>
+                    <p className="text-sm mt-2">Comece registrando sua primeira venda!</p>
+                  </div>
+                ) : (
+                  recentSales.map((sale) => (
+                    <div key={sale.id} className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors">
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <p className="font-medium text-foreground">{sale.client}</p>
+                            <p className="text-sm text-muted-foreground">ID: {sale.id} • {sale.date}</p>
+                          </div>
+                          <Badge 
+                            variant={sale.status === 'Finalizada' ? 'default' : sale.status === 'Processando' ? 'secondary' : 'destructive'}
+                          >
+                            {sale.status}
+                          </Badge>
                         </div>
-                        <Badge 
-                          variant={sale.status === 'Finalizada' ? 'default' : sale.status === 'Processando' ? 'secondary' : 'destructive'}
-                        >
-                          {sale.status}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">
-                            Serviços: {sale.services.join(', ')}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Vendedor: {sale.seller}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-foreground">{sale.value}</p>
-                          <div className="flex space-x-1">
-                            <Button size="sm" variant="outline">
-                              <Eye className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="outline">
-                              <Edit className="w-3 h-3" />
-                            </Button>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              Serviços: {sale.services.join(', ')}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Vendedor: {sale.seller}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-foreground">{sale.value}</p>
+                            <div className="flex space-x-1">
+                              <Button size="sm" variant="outline">
+                                <Eye className="w-3 h-3" />
+                              </Button>
+                              <Button size="sm" variant="outline">
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

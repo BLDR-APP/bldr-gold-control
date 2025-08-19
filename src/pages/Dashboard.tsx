@@ -21,51 +21,41 @@ export function Dashboard({ userRole }: DashboardProps) {
   const kpis = [
     {
       title: "Receita Total",
-      value: "R$ 125.430",
-      change: "+12.5%",
+      value: "R$ 0,00",
+      change: "0%",
       trend: "up",
       icon: DollarSign,
       visible: isPartner
     },
     {
       title: "Vendas do Mês",
-      value: "R$ 23.850",
-      change: "+8.2%",
+      value: "R$ 0,00",
+      change: "0%",
       trend: "up",
       icon: TrendingUp,
       visible: true
     },
     {
       title: "Serviços Ativos",
-      value: "127",
-      change: "+5.3%",
+      value: "0",
+      change: "0%",
       trend: "up",
       icon: Package,
       visible: true
     },
     {
       title: "Funcionários Ativos",
-      value: "24",
-      change: "+1",
+      value: "0",
+      change: "0",
       trend: "up",
       icon: Users,
       visible: isPartner
     }
   ];
 
-  const recentSales = [
-    { id: "001", client: "João Silva", value: "R$ 2.350", status: "Pago" },
-    { id: "002", client: "Maria Santos", value: "R$ 1.890", status: "Pendente" },
-    { id: "003", client: "Pedro Costa", value: "R$ 3.240", status: "Pago" },
-    { id: "004", client: "Ana Paula", value: "R$ 890", status: "Cancelado" },
-  ];
+  const recentSales = [];
 
-  const topServices = [
-    { name: "Consultoria Estratégica", sales: 156, revenue: "R$ 15.600" },
-    { name: "Auditoria Empresarial", sales: 142, revenue: "R$ 12.480" },
-    { name: "Planejamento Financeiro", sales: 128, revenue: "R$ 11.200" },
-    { name: "Assessoria Jurídica", sales: 98, revenue: "R$ 8.820" },
-  ];
+  const topServices = [];
 
   return (
     <div className="space-y-6">
@@ -119,23 +109,30 @@ export function Dashboard({ userRole }: DashboardProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentSales.map((sale) => (
-                <div key={sale.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div>
-                    <p className="font-medium text-foreground">{sale.client}</p>
-                    <p className="text-sm text-muted-foreground">ID: {sale.id}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium text-foreground">{sale.value}</p>
-                    <Badge 
-                      variant={sale.status === 'Pago' ? 'default' : sale.status === 'Pendente' ? 'secondary' : 'destructive'}
-                      className="text-xs"
-                    >
-                      {sale.status}
-                    </Badge>
-                  </div>
+              {recentSales.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <p>Nenhuma venda registrada ainda.</p>
+                  <p className="text-sm mt-2">Comece registrando sua primeira venda!</p>
                 </div>
-              ))}
+              ) : (
+                recentSales.map((sale) => (
+                  <div key={sale.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div>
+                      <p className="font-medium text-foreground">{sale.client}</p>
+                      <p className="text-sm text-muted-foreground">ID: {sale.id}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-foreground">{sale.value}</p>
+                      <Badge 
+                        variant={sale.status === 'Pago' ? 'default' : sale.status === 'Pendente' ? 'secondary' : 'destructive'}
+                        className="text-xs"
+                      >
+                        {sale.status}
+                      </Badge>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -148,22 +145,29 @@ export function Dashboard({ userRole }: DashboardProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {topServices.map((service, index) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-medium text-bldr-gold">#{index + 1}</span>
-                      <span className="font-medium text-foreground">{service.name}</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">{service.revenue}</span>
-                  </div>
-                  <Progress 
-                    value={(service.sales / 160) * 100} 
-                    className="h-2"
-                  />
-                  <p className="text-xs text-muted-foreground">{service.sales} vendas</p>
+              {topServices.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <p>Nenhum serviço vendido ainda.</p>
+                  <p className="text-sm mt-2">Registre seus primeiros serviços para ver as estatísticas!</p>
                 </div>
-              ))}
+              ) : (
+                topServices.map((service, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-bldr-gold">#{index + 1}</span>
+                        <span className="font-medium text-foreground">{service.name}</span>
+                      </div>
+                      <span className="text-sm text-muted-foreground">{service.revenue}</span>
+                    </div>
+                    <Progress 
+                      value={(service.sales / 160) * 100} 
+                      className="h-2"
+                    />
+                    <p className="text-xs text-muted-foreground">{service.sales} vendas</p>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
