@@ -88,7 +88,7 @@ export function AppSidebar({ userRole, onLogout }: AppSidebarProps) {
                       className={({ isActive: linkActive }) => 
                         `flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
                           linkActive 
-                            ? 'bg-bldr-gold text-bldr-black font-medium' 
+                            ? 'bg-bldr-gold text-bldr-white font-medium' 
                             : 'text-bldr-gold'
                         }`
                       }
