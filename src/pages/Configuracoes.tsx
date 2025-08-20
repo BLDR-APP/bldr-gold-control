@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,86 @@ import {
   Save
 } from "lucide-react";
 
+// ✅ mínimos necessários para persistir e refazer leitura
+import { supabase } from "@/integrations/supabase/client";
+import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
+
 export function Configuracoes() {
+  // ---- Estado controlado SOMENTE para os campos editáveis da empresa
+  const [form, setForm] = useState({
+    company_name: "BLDR",
+    cnpj: "12.345.678/0001-90",
+    address: "Rua Principal, 123",
+    phone: "(11) 9999-8888",
+    email: "contato@bldr.com.br",
+    website: "www.bldr.com.br",
+  });
+  const [saving, setSaving] = useState(false);
+
+  // ---- Lê a tabela `settings` (ajuste filtros conforme seu schema, se precisar)
+  const settingsQuery = useSupabaseQuery<any>({
+    table: "settings",
+    select: "*",
+    limit: 1,
+    orderBy: { column: "updated_at", ascending: false },
+  });
+
+  // ---- Hidrata o formulário quando a query carregar
+  useEffect(() => {
+    const row = settingsQuery.data?.[0];
+    if (row) {
+      setForm(prev => ({
+        company_name: row.company_name ?? prev.company_name,
+        cnpj: row.cnpj ?? prev.cnpj,
+        address: row.address ?? prev.address,
+        phone: row.phone ?? prev.phone,
+        email: row.email ?? prev.email,
+        website: row.website ?? prev.website,
+      }));
+    }
+  }, [settingsQuery.data]);
+
+  const onChange =
+    (field: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setForm(prev => ({ ...prev, [field]: e.target.value }));
+    };
+
+  // ---- Mantém o MESMO botão; apenas trocamos o handler para salvar de verdade
+  const onSave = async () => {
+    // mantém a UX atual
+    alert("Salvando todas as configurações");
+    try {
+      setSaving(true);
+
+      // Se tiver uma chave única (ex.: org_id), inclua aqui:
+      const payload = {
+        company_name: form.company_name,
+        cnpj: form.cnpj,
+        address: form.address,
+        phone: form.phone,
+        email: form.email,
+        website: form.website,
+        updated_at: new Date().toISOString(),
+        // org_id: currentOrgId,
+      };
+
+      // upsert cria/ou atualiza a mesma linha de settings
+      const { error } = await supabase
+        .from("settings")
+        .upsert(payload); // { onConflict: "org_id" } se você tiver campo único
+
+      if (error) throw error;
+
+      // Recarrega os dados para refletir em tela
+      await settingsQuery.refetch();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -29,10 +109,11 @@ export function Configuracoes() {
         </div>
         <Button 
           className="bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
-          onClick={() => alert('Salvando todas as configurações')}
+          onClick={onSave}
+          disabled={saving}
         >
           <Save className="w-4 h-4 mr-2" />
-          Salvar Alterações
+          {saving ? "Salvando..." : "Salvar Alterações"}
         </Button>
       </div>
 
@@ -61,27 +142,27 @@ export function Configuracoes() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="company-name">Nome da Empresa</Label>
-                  <Input id="company-name" defaultValue="BLDR" />
+                  <Input id="company-name" value={form.company_name} onChange={onChange("company_name")} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="cnpj">CNPJ</Label>
-                  <Input id="cnpj" defaultValue="12.345.678/0001-90" />
+                  <Input id="cnpj" value={form.cnpj} onChange={onChange("cnpj")} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="address">Endereço</Label>
-                  <Input id="address" defaultValue="Rua Principal, 123" />
+                  <Input id="address" value={form.address} onChange={onChange("address")} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Telefone</Label>
-                  <Input id="phone" defaultValue="(11) 9999-8888" />
+                  <Input id="phone" value={form.phone} onChange={onChange("phone")} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" defaultValue="contato@bldr.com.br" />
+                  <Input id="email" value={form.email} onChange={onChange("email")} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="website">Website</Label>
-                  <Input id="website" defaultValue="www.bldr.com.br" />
+                  <Input id="website" value={form.website} onChange={onChange("website")} />
                 </div>
               </div>
             </CardContent>
