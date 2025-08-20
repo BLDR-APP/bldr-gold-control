@@ -18,7 +18,7 @@ import { formatCurrency } from "@/utils/csvExport";
 
 type Transaction = {
   id: string;
-  type: "entrada" | "saída" | "saida"; // cobre variações
+  type: "entrada" | "saida"; // normalizado
   description: string;
   date: string;       // ISO string
   category?: string;
@@ -29,30 +29,43 @@ type Transaction = {
 export function Financas() {
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
 
-  // 🔎 Busca transações no Supabase (mínimo necessário)
+  // 🔎 Busca transações no Supabase
   const transactionsQuery = useSupabaseQuery<Transaction>({
     table: "transactions",
     select: "*",
     orderBy: { column: "created_at", ascending: false },
   });
 
-  // ✅ Array defensivo + normalização de campos (única mudança necessária)
-  const transactions: Transaction[] = (transactionsQuery.data ?? []).map((t: any) => ({
-    ...t,
-    // aceita "value" | "amount" | "valor" e converte para número (suporta "120,00")
-    value: Number(String(t.value ?? t.amount ?? t.valor ?? "0").replace(/\./g, "").replace(",", ".")),
-    // aceita "type" | "tipo"
-    type: (t.type ?? t.tipo) as "entrada" | "saída" | "saida",
-  }));
+  // ✅ Array defensivo + normalização robusta (ÚNICA mudança necessária)
+  const transactions: Transaction[] = (transactionsQuery.data ?? []).map((t: any) => {
+    // normaliza tipo vindo do banco
+    const rawType = String(t.type ?? t.tipo ?? "").toLowerCase().trim();
+    const isEntrada = ["entrada", "receita", "income", "in"].includes(rawType);
+    const normalizedType: "entrada" | "saida" = isEntrada ? "entrada" : "saida";
 
-  // 📊 KPIs derivados das transações (receita, despesas, lucro, fluxo)
+    // normaliza valor (suporta "R$ 120,00", "120,00", -120)
+    const rawValue = String(t.value ?? t.amount ?? t.valor ?? "0")
+      .replace(/[R$\s]/g, "")
+      .replace(/\./g, "")
+      .replace(",", ".");
+    const parsed = Number(rawValue);
+    const value = Number.isFinite(parsed) ? Math.abs(parsed) : 0;
+
+    return {
+      ...t,
+      type: normalizedType,
+      value,
+    };
+  });
+
+  // 📊 KPIs derivados das transações
   const { revenue, expenses, profit, cashFlow } = useMemo(() => {
     const receita = transactions
       .filter(t => t.type === "entrada")
       .reduce((sum, t) => sum + (t.value || 0), 0);
 
     const saida = transactions
-      .filter(t => t.type === "saída" || t.type === "saida")
+      .filter(t => t.type === "saida")
       .reduce((sum, t) => sum + (t.value || 0), 0);
 
     const lucro = receita - saida;
@@ -76,7 +89,7 @@ export function Financas() {
       const bucket = map.get(key)!;
       if (t.type === "entrada") {
         bucket.revenue += t.value || 0;
-      } else if (t.type === "saída" || t.type === "saida") {
+      } else if (t.type === "saida") {
         bucket.expenses += t.value || 0;
       }
     }
