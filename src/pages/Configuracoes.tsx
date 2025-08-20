@@ -21,9 +21,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 
 type SettingsRow = {
-  // 🔑 adicionado para vincular ao usuário no Supabase
-  user_id?: string;
-
   // Geral
   company_name?: string;
   cnpj?: string;
@@ -31,6 +28,11 @@ type SettingsRow = {
   phone?: string;
   email?: string;
   website?: string;
+
+  // Preferências (agora dinâmicas)
+  timezone?: string;         // ex.: 'America/Sao_Paulo (GMT-3)'
+  currency_symbol?: string;  // ex.: 'R$'
+  locale?: string;           // ex.: 'pt-BR'
 
   // Users
   users_partner_enabled?: boolean;
@@ -96,6 +98,11 @@ export function Configuracoes() {
     email: "contato@bldr.com.br",
     website: "www.bldr.com.br",
 
+    // Preferências (dinâmicas)
+    timezone: "America/Sao_Paulo (GMT-3)",
+    currency_symbol: "R$",
+    locale: "pt-BR",
+
     // Users
     users_partner_enabled: true,
     users_user_enabled: true,
@@ -103,11 +110,11 @@ export function Configuracoes() {
 
     // Permissões (iguais à UI original)
     perm_financas_partner: true, perm_financas_user: false,
-    perm_vendas_partner: true,  perm_vendas_user: true,
+    perm_vendas_partner: true, perm_vendas_user: true,
     perm_estoque_partner: true, perm_estoque_user: true,
-    perm_rh_partner: true,      perm_rh_user: false,
+    perm_rh_partner: true, perm_rh_user: false,
     perm_relatorios_partner: true, perm_relatorios_user: false,
-    perm_configs_partner: true,   perm_configs_user: false,
+    perm_configs_partner: true, perm_configs_user: false,
 
     // Segurança
     two_factor_enabled: true,
@@ -151,6 +158,15 @@ export function Configuracoes() {
     orderBy: { column: "updated_at", ascending: false },
   });
 
+  // --------- BUSCA system_info (somente leitura para o card "Informações do Sistema")
+  const systemQuery = useSupabaseQuery<any>({
+    table: "system_info",
+    select: "*",
+    limit: 1,
+    orderBy: { column: "updated_at", ascending: false },
+  });
+  const sys = systemQuery.data?.[0] ?? {};
+
   // --------- HIDRATA FORM AO CARREGAR
   useEffect(() => {
     const row = settingsQuery.data?.[0];
@@ -162,7 +178,7 @@ export function Configuracoes() {
     }
   }, [settingsQuery.data]);
 
-  // --------- HANDLERS (mantidos)
+  // --------- HANDLERS MÍNIMOS (não muda layout)
   const onChange =
     (field: keyof SettingsRow) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -176,26 +192,20 @@ export function Configuracoes() {
       setForm(prev => ({ ...prev, [field]: checked }));
     };
 
-  // --------- SALVAR CONFIGURAÇÕES (ajuste mínimo: user_id + onConflict)
+  // --------- MANTÉM O MESMO BOTÃO (apenas troca o handler)
   const onSave = async () => {
     alert("Salvando todas as configurações");
     try {
       setSaving(true);
 
-      const { data: authData, error: authErr } = await supabase.auth.getUser();
-      if (authErr) throw authErr;
-      const userId = authData.user?.id;
-      if (!userId) throw new Error("Usuário não autenticado");
-
       const payload: SettingsRow = {
         ...form,
-        user_id: userId, // 🔑 vincula a linha ao usuário
         updated_at: new Date().toISOString(),
       };
 
       const { error } = await supabase
         .from("settings")
-        .upsert(payload, { onConflict: "user_id" }); // 🔑 garante 1 linha por user_id
+        .upsert(payload);
 
       if (error) throw error;
 
@@ -286,7 +296,9 @@ export function Configuracoes() {
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-foreground">Fuso Horário</Label>
-                  <p className="text-sm text-muted-foreground">America/Sao_Paulo (GMT-3)</p>
+                  <p className="text-sm text-muted-foreground">
+                    {form.timezone || "America/Sao_Paulo (GMT-3)"}
+                  </p>
                 </div>
                 <Badge variant="outline">Detectado</Badge>
               </div>
@@ -295,14 +307,14 @@ export function Configuracoes() {
                   <Label className="text-foreground">Moeda Padrão</Label>
                   <p className="text-sm text-muted-foreground">Real Brasileiro (BRL)</p>
                 </div>
-                <Badge variant="default">R$</Badge>
+                <Badge variant="default">{form.currency_symbol || "R$"}</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-foreground">Idioma do Sistema</Label>
                   <p className="text-sm text-muted-foreground">Português (Brasil)</p>
                 </div>
-                <Badge variant="outline">pt-BR</Badge>
+                <Badge variant="outline">{form.locale || "pt-BR"}</Badge>
               </div>
             </CardContent>
           </Card>
@@ -591,29 +603,29 @@ export function Configuracoes() {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Versão:</span>
-                    <Badge variant="default">v2.1.0</Badge>
+                    <Badge variant="default">{sys.app_version || "v2.1.0"}</Badge>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Última Atualização:</span>
-                    <span className="text-sm text-foreground">15/01/2024</span>
+                    <span className="text-sm text-foreground">{sys.last_update || "15/01/2024"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Uptime:</span>
-                    <span className="text-sm text-foreground">15 dias, 3h</span>
+                    <span className="text-sm text-foreground">{sys.uptime || "15 dias, 3h"}</span>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Usuários Ativos:</span>
-                    <span className="text-sm text-foreground">8/15</span>
+                    <span className="text-sm text-foreground">{sys.users_active || "8/15"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Storage Usado:</span>
-                    <span className="text-sm text-foreground">2.3GB/10GB</span>
+                    <span className="text-sm text-foreground">{sys.storage_used || "2.3GB/10GB"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Último Backup:</span>
-                    <span className="text-sm text-foreground">Hoje 02:00</span>
+                    <span className="text-sm text-foreground">{sys.last_backup || "Hoje 02:00"}</span>
                   </div>
                 </div>
               </div>
