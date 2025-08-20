@@ -21,6 +21,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 
 type SettingsRow = {
+  // 🔑 adicionado para vincular ao usuário no Supabase
+  user_id?: string;
+
   // Geral
   company_name?: string;
   cnpj?: string;
@@ -30,12 +33,11 @@ type SettingsRow = {
   website?: string;
 
   // Users
-  // (contadores continuam estáticos na UI; os switches são controlados)
   users_partner_enabled?: boolean;
   users_user_enabled?: boolean;
   users_guest_enabled?: boolean;
 
-  // Permissões por módulo (simplificado: flags por perfil)
+  // Permissões por módulo
   perm_financas_partner?: boolean;
   perm_financas_user?: boolean;
   perm_vendas_partner?: boolean;
@@ -81,7 +83,6 @@ type SettingsRow = {
   maintenance_mode?: boolean;
 
   updated_at?: string;
-  // org_id?: string; // se houver
 };
 
 export function Configuracoes() {
@@ -102,11 +103,11 @@ export function Configuracoes() {
 
     // Permissões (iguais à UI original)
     perm_financas_partner: true, perm_financas_user: false,
-    perm_vendas_partner: true, perm_vendas_user: true,
+    perm_vendas_partner: true,  perm_vendas_user: true,
     perm_estoque_partner: true, perm_estoque_user: true,
-    perm_rh_partner: true, perm_rh_user: false,
+    perm_rh_partner: true,      perm_rh_user: false,
     perm_relatorios_partner: true, perm_relatorios_user: false,
-    perm_configs_partner: true, perm_configs_user: false,
+    perm_configs_partner: true,   perm_configs_user: false,
 
     // Segurança
     two_factor_enabled: true,
@@ -161,7 +162,7 @@ export function Configuracoes() {
     }
   }, [settingsQuery.data]);
 
-  // --------- HANDLERS MÍNIMOS (não muda layout)
+  // --------- HANDLERS (mantidos)
   const onChange =
     (field: keyof SettingsRow) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -175,22 +176,26 @@ export function Configuracoes() {
       setForm(prev => ({ ...prev, [field]: checked }));
     };
 
-  // --------- MANTÉM O MESMO BOTÃO (apenas troca o handler)
+  // --------- SALVAR CONFIGURAÇÕES (ajuste mínimo: user_id + onConflict)
   const onSave = async () => {
-    // preserva o alert existente
     alert("Salvando todas as configurações");
     try {
       setSaving(true);
 
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr) throw authErr;
+      const userId = authData.user?.id;
+      if (!userId) throw new Error("Usuário não autenticado");
+
       const payload: SettingsRow = {
         ...form,
+        user_id: userId, // 🔑 vincula a linha ao usuário
         updated_at: new Date().toISOString(),
-        // org_id: currentOrgId, // se houver, incluir aqui + onConflict
       };
 
       const { error } = await supabase
         .from("settings")
-        .upsert(payload); // { onConflict: "org_id" } se tiver chave única
+        .upsert(payload, { onConflict: "user_id" }); // 🔑 garante 1 linha por user_id
 
       if (error) throw error;
 
