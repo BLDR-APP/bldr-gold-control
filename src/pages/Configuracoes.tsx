@@ -7,90 +7,193 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Settings, 
   User,
   Shield,
   Bell,
   Database,
   Mail,
   Smartphone,
-  Key,
   Building2,
   Save
 } from "lucide-react";
 
-// ✅ mínimos necessários para persistir e refazer leitura
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 
+type SettingsRow = {
+  // Geral
+  company_name?: string;
+  cnpj?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+
+  // Users
+  // (contadores continuam estáticos na UI; os switches são controlados)
+  users_partner_enabled?: boolean;
+  users_user_enabled?: boolean;
+  users_guest_enabled?: boolean;
+
+  // Permissões por módulo (simplificado: flags por perfil)
+  perm_financas_partner?: boolean;
+  perm_financas_user?: boolean;
+  perm_vendas_partner?: boolean;
+  perm_vendas_user?: boolean;
+  perm_estoque_partner?: boolean;
+  perm_estoque_user?: boolean;
+  perm_rh_partner?: boolean;
+  perm_rh_user?: boolean;
+  perm_relatorios_partner?: boolean;
+  perm_relatorios_user?: boolean;
+  perm_configs_partner?: boolean;
+  perm_configs_user?: boolean;
+
+  // Segurança
+  two_factor_enabled?: boolean;
+  multi_session_enabled?: boolean;
+  audit_log_enabled?: boolean;
+  session_timeout_minutes?: number;
+
+  pass_min_length?: number;
+  pass_expiry_days?: number;
+  pass_require_uppercase?: boolean;
+  pass_require_numbers?: boolean;
+  pass_require_special?: boolean;
+  pass_history_enabled?: boolean;
+
+  // Notificações
+  notif_email_enabled?: boolean;
+  notif_push_enabled?: boolean;
+
+  notif_sales?: boolean;
+  notif_low_stock?: boolean;
+  notif_new_transactions?: boolean;
+  notif_reports?: boolean;
+  notif_new_employees?: boolean;
+  notif_goals?: boolean;
+  notif_security?: boolean;
+  notif_backup?: boolean;
+
+  // Sistema
+  backup_enabled?: boolean;
+  logs_retention_days?: number;
+  maintenance_mode?: boolean;
+
+  updated_at?: string;
+  // org_id?: string; // se houver
+};
+
 export function Configuracoes() {
-  // ---- Estado controlado SOMENTE para os campos editáveis da empresa
-  const [form, setForm] = useState({
+  // --------- ESTADO CONTROLADO (mantendo layout e textos)
+  const [form, setForm] = useState<SettingsRow>({
+    // Geral
     company_name: "BLDR",
     cnpj: "12.345.678/0001-90",
     address: "Rua Principal, 123",
     phone: "(11) 9999-8888",
     email: "contato@bldr.com.br",
     website: "www.bldr.com.br",
+
+    // Users
+    users_partner_enabled: true,
+    users_user_enabled: true,
+    users_guest_enabled: false,
+
+    // Permissões (iguais à UI original)
+    perm_financas_partner: true, perm_financas_user: false,
+    perm_vendas_partner: true, perm_vendas_user: true,
+    perm_estoque_partner: true, perm_estoque_user: true,
+    perm_rh_partner: true, perm_rh_user: false,
+    perm_relatorios_partner: true, perm_relatorios_user: false,
+    perm_configs_partner: true, perm_configs_user: false,
+
+    // Segurança
+    two_factor_enabled: true,
+    multi_session_enabled: true,
+    audit_log_enabled: true,
+    session_timeout_minutes: 30,
+
+    pass_min_length: 8,
+    pass_expiry_days: 90,
+    pass_require_uppercase: true,
+    pass_require_numbers: true,
+    pass_require_special: true,
+    pass_history_enabled: false,
+
+    // Notificações
+    notif_email_enabled: true,
+    notif_push_enabled: true,
+
+    notif_sales:  true,
+    notif_low_stock: true,
+    notif_new_transactions: true,
+    notif_reports: false,
+    notif_new_employees: true,
+    notif_goals: true,
+    notif_security: true,
+    notif_backup: false,
+
+    // Sistema
+    backup_enabled: true,
+    logs_retention_days: 90,
+    maintenance_mode: false,
   });
+
   const [saving, setSaving] = useState(false);
 
-  // ---- Lê a tabela `settings` (ajuste filtros conforme seu schema, se precisar)
-  const settingsQuery = useSupabaseQuery<any>({
+  // --------- BUSCA NO SUPABASE (mantém a mesma UX/estrutura)
+  const settingsQuery = useSupabaseQuery<SettingsRow>({
     table: "settings",
     select: "*",
     limit: 1,
     orderBy: { column: "updated_at", ascending: false },
   });
 
-  // ---- Hidrata o formulário quando a query carregar
+  // --------- HIDRATA FORM AO CARREGAR
   useEffect(() => {
     const row = settingsQuery.data?.[0];
     if (row) {
       setForm(prev => ({
-        company_name: row.company_name ?? prev.company_name,
-        cnpj: row.cnpj ?? prev.cnpj,
-        address: row.address ?? prev.address,
-        phone: row.phone ?? prev.phone,
-        email: row.email ?? prev.email,
-        website: row.website ?? prev.website,
+        ...prev,
+        ...row,
       }));
     }
   }, [settingsQuery.data]);
 
+  // --------- HANDLERS MÍNIMOS (não muda layout)
   const onChange =
-    (field: keyof typeof form) =>
+    (field: keyof SettingsRow) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      setForm(prev => ({ ...prev, [field]: e.target.value }));
+      const value = e.target.type === "number" ? Number(e.target.value) : e.target.value;
+      setForm(prev => ({ ...prev, [field]: value }));
     };
 
-  // ---- Mantém o MESMO botão; apenas trocamos o handler para salvar de verdade
+  const onToggle =
+    (field: keyof SettingsRow) =>
+    (checked: boolean) => {
+      setForm(prev => ({ ...prev, [field]: checked }));
+    };
+
+  // --------- MANTÉM O MESMO BOTÃO (apenas troca o handler)
   const onSave = async () => {
-    // mantém a UX atual
+    // preserva o alert existente
     alert("Salvando todas as configurações");
     try {
       setSaving(true);
 
-      // Se tiver uma chave única (ex.: org_id), inclua aqui:
-      const payload = {
-        company_name: form.company_name,
-        cnpj: form.cnpj,
-        address: form.address,
-        phone: form.phone,
-        email: form.email,
-        website: form.website,
+      const payload: SettingsRow = {
+        ...form,
         updated_at: new Date().toISOString(),
-        // org_id: currentOrgId,
+        // org_id: currentOrgId, // se houver, incluir aqui + onConflict
       };
 
-      // upsert cria/ou atualiza a mesma linha de settings
       const { error } = await supabase
         .from("settings")
-        .upsert(payload); // { onConflict: "org_id" } se você tiver campo único
+        .upsert(payload); // { onConflict: "org_id" } se tiver chave única
 
       if (error) throw error;
 
-      // Recarrega os dados para refletir em tela
       await settingsQuery.refetch();
     } catch (err) {
       console.error(err);
@@ -127,6 +230,7 @@ export function Configuracoes() {
           <TabsTrigger value="system">Sistema</TabsTrigger>
         </TabsList>
 
+        {/* ----------------- GERAL ----------------- */}
         <TabsContent value="general" className="space-y-6">
           <Card className="bg-card border-border">
             <CardHeader>
@@ -142,27 +246,27 @@ export function Configuracoes() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="company-name">Nome da Empresa</Label>
-                  <Input id="company-name" value={form.company_name} onChange={onChange("company_name")} />
+                  <Input id="company-name" value={form.company_name ?? ""} onChange={onChange("company_name")} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="cnpj">CNPJ</Label>
-                  <Input id="cnpj" value={form.cnpj} onChange={onChange("cnpj")} />
+                  <Input id="cnpj" value={form.cnpj ?? ""} onChange={onChange("cnpj")} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="address">Endereço</Label>
-                  <Input id="address" value={form.address} onChange={onChange("address")} />
+                  <Input id="address" value={form.address ?? ""} onChange={onChange("address")} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Telefone</Label>
-                  <Input id="phone" value={form.phone} onChange={onChange("phone")} />
+                  <Input id="phone" value={form.phone ?? ""} onChange={onChange("phone")} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" value={form.email} onChange={onChange("email")} />
+                  <Input id="email" value={form.email ?? ""} onChange={onChange("email")} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="website">Website</Label>
-                  <Input id="website" value={form.website} onChange={onChange("website")} />
+                  <Input id="website" value={form.website ?? ""} onChange={onChange("website")} />
                 </div>
               </div>
             </CardContent>
@@ -199,6 +303,7 @@ export function Configuracoes() {
           </Card>
         </TabsContent>
 
+        {/* ----------------- USUÁRIOS ----------------- */}
         <TabsContent value="users" className="space-y-6">
           <Card className="bg-card border-border">
             <CardHeader>
@@ -219,7 +324,7 @@ export function Configuracoes() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <Badge variant="default">3 usuários</Badge>
-                    <Switch defaultChecked />
+                    <Switch checked={!!form.users_partner_enabled} onCheckedChange={onToggle("users_partner_enabled")} />
                   </div>
                 </div>
                 <div className="flex items-center justify-between p-4 rounded-lg border border-border">
@@ -229,7 +334,7 @@ export function Configuracoes() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <Badge variant="secondary">12 usuários</Badge>
-                    <Switch defaultChecked />
+                    <Switch checked={!!form.users_user_enabled} onCheckedChange={onToggle("users_user_enabled")} />
                   </div>
                 </div>
                 <div className="flex items-center justify-between p-4 rounded-lg border border-border">
@@ -239,7 +344,7 @@ export function Configuracoes() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <Badge variant="outline">0 usuários</Badge>
-                    <Switch />
+                    <Switch checked={!!form.users_guest_enabled} onCheckedChange={onToggle("users_guest_enabled")} />
                   </div>
                 </div>
               </div>
@@ -254,23 +359,29 @@ export function Configuracoes() {
             <CardContent>
               <div className="space-y-4">
                 {[
-                  { module: "Finanças", partner: true, user: false },
-                  { module: "Vendas", partner: true, user: true },
-                  { module: "Estoque", partner: true, user: true },
-                  { module: "RH", partner: true, user: false },
-                  { module: "Relatórios", partner: true, user: false },
-                  { module: "Configurações", partner: true, user: false }
-                ].map((perm, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <span className="font-medium text-foreground">{perm.module}</span>
+                  { key: "financas",  label: "Finanças" },
+                  { key: "vendas",    label: "Vendas" },
+                  { key: "estoque",   label: "Estoque" },
+                  { key: "rh",        label: "RH" },
+                  { key: "relatorios",label: "Relatórios" },
+                  { key: "configs",   label: "Configurações" },
+                ].map(({ key, label }) => (
+                  <div key={key} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <span className="font-medium text-foreground">{label}</span>
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-2">
                         <Label className="text-sm">Sócios</Label>
-                        <Switch defaultChecked={perm.partner} />
+                        <Switch
+                          checked={!!(form as any)[`perm_${key}_partner`]}
+                          onCheckedChange={(v) => onToggle(`perm_${key}_partner` as keyof SettingsRow)(v)}
+                        />
                       </div>
                       <div className="flex items-center space-x-2">
                         <Label className="text-sm">Usuários</Label>
-                        <Switch defaultChecked={perm.user} />
+                        <Switch
+                          checked={!!(form as any)[`perm_${key}_user`]}
+                          onCheckedChange={(v) => onToggle(`perm_${key}_user` as keyof SettingsRow)(v)}
+                        />
                       </div>
                     </div>
                   </div>
@@ -280,6 +391,7 @@ export function Configuracoes() {
           </Card>
         </TabsContent>
 
+        {/* ----------------- SEGURANÇA ----------------- */}
         <TabsContent value="security" className="space-y-6">
           <Card className="bg-card border-border">
             <CardHeader>
@@ -297,28 +409,28 @@ export function Configuracoes() {
                   <Label className="text-foreground">Autenticação de Dois Fatores</Label>
                   <p className="text-sm text-muted-foreground">Segurança adicional no login</p>
                 </div>
-                <Switch defaultChecked />
+                <Switch checked={!!form.two_factor_enabled} onCheckedChange={onToggle("two_factor_enabled")} />
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-foreground">Sessões Múltiplas</Label>
                   <p className="text-sm text-muted-foreground">Permitir login em vários dispositivos</p>
                 </div>
-                <Switch defaultChecked />
+                <Switch checked={!!form.multi_session_enabled} onCheckedChange={onToggle("multi_session_enabled")} />
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-foreground">Timeout de Sessão</Label>
                   <p className="text-sm text-muted-foreground">Logout automático após inatividade</p>
                 </div>
-                <Badge variant="outline">30 minutos</Badge>
+                <Badge variant="outline">{form.session_timeout_minutes ?? 30} minutos</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-foreground">Log de Auditoria</Label>
                   <p className="text-sm text-muted-foreground">Registro de todas as ações</p>
                 </div>
-                <Switch defaultChecked />
+                <Switch checked={!!form.audit_log_enabled} onCheckedChange={onToggle("audit_log_enabled")} />
               </div>
             </CardContent>
           </Card>
@@ -332,28 +444,28 @@ export function Configuracoes() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Tamanho Mínimo</Label>
-                  <Input defaultValue="8" type="number" />
+                  <Input type="number" value={form.pass_min_length ?? 8} onChange={onChange("pass_min_length")} />
                 </div>
                 <div className="space-y-2">
                   <Label>Validade (dias)</Label>
-                  <Input defaultValue="90" type="number" />
+                  <Input type="number" value={form.pass_expiry_days ?? 90} onChange={onChange("pass_expiry_days")} />
                 </div>
               </div>
               <div className="space-y-3">
                 <div className="flex items-center space-x-2">
-                  <Switch defaultChecked />
+                  <Switch checked={!!form.pass_require_uppercase} onCheckedChange={onToggle("pass_require_uppercase")} />
                   <Label>Exigir letras maiúsculas</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Switch defaultChecked />
+                  <Switch checked={!!form.pass_require_numbers} onCheckedChange={onToggle("pass_require_numbers")} />
                   <Label>Exigir números</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Switch defaultChecked />
+                  <Switch checked={!!form.pass_require_special} onCheckedChange={onToggle("pass_require_special")} />
                   <Label>Exigir caracteres especiais</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Switch />
+                  <Switch checked={!!form.pass_history_enabled} onCheckedChange={onToggle("pass_history_enabled")} />
                   <Label>Histórico de senhas (não repetir últimas 5)</Label>
                 </div>
               </div>
@@ -361,6 +473,7 @@ export function Configuracoes() {
           </Card>
         </TabsContent>
 
+        {/* ----------------- NOTIFICAÇÕES ----------------- */}
         <TabsContent value="notifications" className="space-y-6">
           <Card className="bg-card border-border">
             <CardHeader>
@@ -382,7 +495,7 @@ export function Configuracoes() {
                       <p className="text-sm text-muted-foreground">Receber alertas por email</p>
                     </div>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch checked={!!form.notif_email_enabled} onCheckedChange={onToggle("notif_email_enabled")} />
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
@@ -392,7 +505,7 @@ export function Configuracoes() {
                       <p className="text-sm text-muted-foreground">Alertas no navegador</p>
                     </div>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch checked={!!form.notif_push_enabled} onCheckedChange={onToggle("notif_push_enabled")} />
                 </div>
               </div>
             </CardContent>
@@ -405,24 +518,28 @@ export function Configuracoes() {
             </CardHeader>
             <CardContent className="space-y-4">
               {[
-                { type: "Vendas realizadas", enabled: true },
-                { type: "Estoque baixo", enabled: true },
-                { type: "Novas transações financeiras", enabled: true },
-                { type: "Relatórios gerados", enabled: false },
-                { type: "Novos funcionários", enabled: true },
-                { type: "Metas atingidas", enabled: true },
-                { type: "Alertas de segurança", enabled: true },
-                { type: "Backup do sistema", enabled: false }
-              ].map((notification, index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <Label className="text-foreground">{notification.type}</Label>
-                  <Switch defaultChecked={notification.enabled} />
+                { field: "notif_sales", label: "Vendas realizadas" },
+                { field: "notif_low_stock", label: "Estoque baixo" },
+                { field: "notif_new_transactions", label: "Novas transações financeiras" },
+                { field: "notif_reports", label: "Relatórios gerados" },
+                { field: "notif_new_employees", label: "Novos funcionários" },
+                { field: "notif_goals", label: "Metas atingidas" },
+                { field: "notif_security", label: "Alertas de segurança" },
+                { field: "notif_backup", label: "Backup do sistema" },
+              ].map((n) => (
+                <div key={n.field} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                  <Label className="text-foreground">{n.label}</Label>
+                  <Switch
+                    checked={!!(form as any)[n.field]}
+                    onCheckedChange={(v) => onToggle(n.field as keyof SettingsRow)(v)}
+                  />
                 </div>
               ))}
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* ----------------- SISTEMA ----------------- */}
         <TabsContent value="system" className="space-y-6">
           <Card className="bg-card border-border">
             <CardHeader>
@@ -440,21 +557,21 @@ export function Configuracoes() {
                   <Label className="text-foreground">Backup Automático</Label>
                   <p className="text-sm text-muted-foreground">Backup diário às 02:00</p>
                 </div>
-                <Switch defaultChecked />
+                <Switch checked={!!form.backup_enabled} onCheckedChange={onToggle("backup_enabled")} />
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-foreground">Retenção de Logs</Label>
-                  <p className="text-sm text-muted-foreground">Manter logs por 90 dias</p>
+                  <p className="text-sm text-muted-foreground">Manter logs por {form.logs_retention_days ?? 90} dias</p>
                 </div>
-                <Badge variant="outline">90 dias</Badge>
+                <Badge variant="outline">{form.logs_retention_days ?? 90} dias</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-foreground">Modo de Manutenção</Label>
                   <p className="text-sm text-muted-foreground">Desabilitar acesso de usuários</p>
                 </div>
-                <Switch />
+                <Switch checked={!!form.maintenance_mode} onCheckedChange={onToggle("maintenance_mode")} />
               </div>
             </CardContent>
           </Card>
