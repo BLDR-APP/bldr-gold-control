@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,12 +29,7 @@ type SettingsRow = {
   email?: string;
   website?: string;
 
-  // Preferências (agora dinâmicas)
-  timezone?: string;         // ex.: 'America/Sao_Paulo (GMT-3)'
-  currency_symbol?: string;  // ex.: 'R$'
-  locale?: string;           // ex.: 'pt-BR'
-
-  // Users
+  // Users (switches)
   users_partner_enabled?: boolean;
   users_user_enabled?: boolean;
   users_guest_enabled?: boolean;
@@ -88,7 +83,7 @@ type SettingsRow = {
 };
 
 export function Configuracoes() {
-  // --------- ESTADO CONTROLADO (mantendo layout e textos)
+  // --------- ESTADO (mantido) ---------
   const [form, setForm] = useState<SettingsRow>({
     // Geral
     company_name: "BLDR",
@@ -98,23 +93,18 @@ export function Configuracoes() {
     email: "contato@bldr.com.br",
     website: "www.bldr.com.br",
 
-    // Preferências (dinâmicas)
-    timezone: "America/Sao_Paulo (GMT-3)",
-    currency_symbol: "R$",
-    locale: "pt-BR",
-
-    // Users
+    // Users (switches como antes)
     users_partner_enabled: true,
     users_user_enabled: true,
     users_guest_enabled: false,
 
-    // Permissões (iguais à UI original)
+    // Permissões (iguais)
     perm_financas_partner: true, perm_financas_user: false,
-    perm_vendas_partner: true, perm_vendas_user: true,
-    perm_estoque_partner: true, perm_estoque_user: true,
-    perm_rh_partner: true, perm_rh_user: false,
+    perm_vendas_partner: true,   perm_vendas_user: true,
+    perm_estoque_partner: true,  perm_estoque_user: true,
+    perm_rh_partner: true,       perm_rh_user: false,
     perm_relatorios_partner: true, perm_relatorios_user: false,
-    perm_configs_partner: true, perm_configs_user: false,
+    perm_configs_partner: true,  perm_configs_user: false,
 
     // Segurança
     two_factor_enabled: true,
@@ -150,7 +140,7 @@ export function Configuracoes() {
 
   const [saving, setSaving] = useState(false);
 
-  // --------- BUSCA NO SUPABASE (mantém a mesma UX/estrutura)
+  // --------- BUSCA settings (mantido) ---------
   const settingsQuery = useSupabaseQuery<SettingsRow>({
     table: "settings",
     select: "*",
@@ -158,27 +148,35 @@ export function Configuracoes() {
     orderBy: { column: "updated_at", ascending: false },
   });
 
-  // --------- BUSCA system_info (somente leitura para o card "Informações do Sistema")
-  const systemQuery = useSupabaseQuery<any>({
-    table: "system_info",
-    select: "*",
-    limit: 1,
-    orderBy: { column: "updated_at", ascending: false },
-  });
-  const sys = systemQuery.data?.[0] ?? {};
-
-  // --------- HIDRATA FORM AO CARREGAR
   useEffect(() => {
     const row = settingsQuery.data?.[0];
     if (row) {
-      setForm(prev => ({
-        ...prev,
-        ...row,
-      }));
+      setForm(prev => ({ ...prev, ...row }));
     }
   }, [settingsQuery.data]);
 
-  // --------- HANDLERS MÍNIMOS (não muda layout)
+  // --------- NOVO: BUSCA perfis para contadores dinâmicos ----------
+  // Ajuste o nome da tabela se necessário (ex.: "users")
+  type ProfileRow = { id: string; role?: string | null };
+  const profilesQuery = useSupabaseQuery<ProfileRow>({
+    table: "profiles",
+    select: "id, role",
+    orderBy: { column: "id", ascending: true },
+  });
+  const profiles = profilesQuery.data ?? [];
+
+  const { partnersCount, usersCount, guestsCount } = useMemo(() => {
+    let partners = 0, users = 0, guests = 0;
+    for (const p of profiles) {
+      const r = (p.role || "").toLowerCase();
+      if (r === "partner" || r === "socio" || r === "sócio") partners++;
+      else if (r === "user" || r === "usuario" || r === "usuário") users++;
+      else if (r === "guest" || r === "convidado") guests++;
+    }
+    return { partnersCount: partners, usersCount: users, guestsCount: guests };
+  }, [profiles]);
+
+  // --------- HANDLERS (mantidos) ---------
   const onChange =
     (field: keyof SettingsRow) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,23 +190,13 @@ export function Configuracoes() {
       setForm(prev => ({ ...prev, [field]: checked }));
     };
 
-  // --------- MANTÉM O MESMO BOTÃO (apenas troca o handler)
   const onSave = async () => {
     alert("Salvando todas as configurações");
     try {
       setSaving(true);
-
-      const payload: SettingsRow = {
-        ...form,
-        updated_at: new Date().toISOString(),
-      };
-
-      const { error } = await supabase
-        .from("settings")
-        .upsert(payload);
-
+      const payload: SettingsRow = { ...form, updated_at: new Date().toISOString() };
+      const { error } = await supabase.from("settings").upsert(payload);
       if (error) throw error;
-
       await settingsQuery.refetch();
     } catch (err) {
       console.error(err);
@@ -296,9 +284,7 @@ export function Configuracoes() {
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-foreground">Fuso Horário</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {form.timezone || "America/Sao_Paulo (GMT-3)"}
-                  </p>
+                  <p className="text-sm text-muted-foreground">America/Sao_Paulo (GMT-3)</p>
                 </div>
                 <Badge variant="outline">Detectado</Badge>
               </div>
@@ -307,20 +293,20 @@ export function Configuracoes() {
                   <Label className="text-foreground">Moeda Padrão</Label>
                   <p className="text-sm text-muted-foreground">Real Brasileiro (BRL)</p>
                 </div>
-                <Badge variant="default">{form.currency_symbol || "R$"}</Badge>
+                <Badge variant="default">R$</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-foreground">Idioma do Sistema</Label>
                   <p className="text-sm text-muted-foreground">Português (Brasil)</p>
                 </div>
-                <Badge variant="outline">{form.locale || "pt-BR"}</Badge>
+                <Badge variant="outline">pt-BR</Badge>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* ----------------- USUÁRIOS ----------------- */}
+        {/* ----------------- USUÁRIOS (agora com contadores dinâmicos) ----------------- */}
         <TabsContent value="users" className="space-y-6">
           <Card className="bg-card border-border">
             <CardHeader>
@@ -340,7 +326,9 @@ export function Configuracoes() {
                     <p className="text-sm text-muted-foreground">Acesso completo ao sistema</p>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge variant="default">3 usuários</Badge>
+                    <Badge variant="default">
+                      {profilesQuery.loading ? "..." : `${partnersCount} usuário${partnersCount === 1 ? "" : "s"}`}
+                    </Badge>
                     <Switch checked={!!form.users_partner_enabled} onCheckedChange={onToggle("users_partner_enabled")} />
                   </div>
                 </div>
@@ -350,7 +338,9 @@ export function Configuracoes() {
                     <p className="text-sm text-muted-foreground">Acesso limitado às operações</p>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge variant="secondary">12 usuários</Badge>
+                    <Badge variant="secondary">
+                      {profilesQuery.loading ? "..." : `${usersCount} usuário${usersCount === 1 ? "" : "s"}`}
+                    </Badge>
                     <Switch checked={!!form.users_user_enabled} onCheckedChange={onToggle("users_user_enabled")} />
                   </div>
                 </div>
@@ -360,7 +350,9 @@ export function Configuracoes() {
                     <p className="text-sm text-muted-foreground">Acesso somente leitura</p>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge variant="outline">0 usuários</Badge>
+                    <Badge variant="outline">
+                      {profilesQuery.loading ? "..." : `${guestsCount} usuário${guestsCount === 1 ? "" : "s"}`}
+                    </Badge>
                     <Switch checked={!!form.users_guest_enabled} onCheckedChange={onToggle("users_guest_enabled")} />
                   </div>
                 </div>
@@ -599,33 +591,35 @@ export function Configuracoes() {
               <CardDescription>Detalhes técnicos da instalação</CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Mantive estático aqui, como combinado; 
+                  se quiser, eu ligo ao system_info depois */}
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Versão:</span>
-                    <Badge variant="default">{sys.app_version || "v2.1.0"}</Badge>
+                    <Badge variant="default">v2.1.0</Badge>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Última Atualização:</span>
-                    <span className="text-sm text-foreground">{sys.last_update || "15/01/2024"}</span>
+                    <span className="text-sm text-foreground">15/01/2024</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Uptime:</span>
-                    <span className="text-sm text-foreground">{sys.uptime || "15 dias, 3h"}</span>
+                    <span className="text-sm text-foreground">15 dias, 3h</span>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Usuários Ativos:</span>
-                    <span className="text-sm text-foreground">{sys.users_active || "8/15"}</span>
+                    <span className="text-sm text-foreground">8/15</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Storage Usado:</span>
-                    <span className="text-sm text-foreground">{sys.storage_used || "2.3GB/10GB"}</span>
+                    <span className="text-sm text-foreground">2.3GB/10GB</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Último Backup:</span>
-                    <span className="text-sm text-foreground">{sys.last_backup || "Hoje 02:00"}</span>
+                    <span className="text-sm text-foreground">Hoje 02:00</span>
                   </div>
                 </div>
               </div>
