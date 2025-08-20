@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogIn, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,12 +12,44 @@ interface AuthModalProps {
   onAuthSuccess: () => void;
 }
 
+type Role = "partner" | "user" | "guest";
+
 export function AuthModal({ onAuthSuccess }: AuthModalProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [role, setRole] = useState<Role>("user"); // novo: papel escolhido no cadastro
+  const [partnersCount, setPartnersCount] = useState<number | null>(null); // novo: total de sócios
+  const MAX_PARTNERS = 4;
+
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  // Busca quantos "Sócio" já existem (profiles.role = 'partner')
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        // Requer tabela 'profiles' com coluna 'role' e permissão de count (RLS)
+        const { count, error } = await supabase
+          .from("profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("role", "partner");
+
+        if (!cancelled) {
+          if (error) {
+            // Mantém usabilidade mesmo se não for possível contar
+            setPartnersCount(null);
+          } else {
+            setPartnersCount(count ?? 0);
+          }
+        }
+      } catch {
+        if (!cancelled) setPartnersCount(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleLogin = async () => {
     setLoading(true);
@@ -41,7 +72,7 @@ export function AuthModal({ onAuthSuccess }: AuthModalProps) {
         });
         onAuthSuccess();
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Ocorreu um erro inesperado",
@@ -53,6 +84,16 @@ export function AuthModal({ onAuthSuccess }: AuthModalProps) {
   };
 
   const handleSignUp = async () => {
+    // Bloqueio client-side para papel "Sócio" quando atingir 4
+    if (role === "partner" && (partnersCount ?? 0) >= MAX_PARTNERS) {
+      toast({
+        title: "Limite de sócios atingido",
+        description: "Já existem 4 contas de sócio cadastradas.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const { error } = await supabase.auth.signUp({
@@ -62,6 +103,7 @@ export function AuthModal({ onAuthSuccess }: AuthModalProps) {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
             full_name: fullName,
+            role, // novo: envia papel no metadata do usuário
           },
         },
       });
@@ -77,8 +119,16 @@ export function AuthModal({ onAuthSuccess }: AuthModalProps) {
           title: "Cadastro realizado!",
           description: "Verifique seu email para confirmar a conta",
         });
+        // Opcional: atualizar contador depois de cadastrar
+        try {
+          const { count } = await supabase
+            .from("profiles")
+            .select("id", { count: "exact", head: true })
+            .eq("role", "partner");
+          setPartnersCount(count ?? partnersCount);
+        } catch {}
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Ocorreu um erro inesperado",
@@ -88,6 +138,13 @@ export function AuthModal({ onAuthSuccess }: AuthModalProps) {
       setLoading(false);
     }
   };
+
+  // Helper de estado do option "Sócio"
+  const partnerDisabled = partnersCount !== null && partnersCount >= MAX_PARTNERS;
+  const partnerLabel =
+    partnersCount === null
+      ? "Sócio (verificando…)"
+      : `Sócio (${Math.min(partnersCount, MAX_PARTNERS)}/${MAX_PARTNERS})`;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
@@ -121,6 +178,7 @@ export function AuthModal({ onAuthSuccess }: AuthModalProps) {
                 </TabsTrigger>
               </TabsList>
 
+              {/* LOGIN */}
               <TabsContent value="login" className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
@@ -151,6 +209,7 @@ export function AuthModal({ onAuthSuccess }: AuthModalProps) {
                 </Button>
               </TabsContent>
 
+              {/* CADASTRO */}
               <TabsContent value="signup" className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Nome Completo</Label>
@@ -182,9 +241,32 @@ export function AuthModal({ onAuthSuccess }: AuthModalProps) {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                 </div>
+
+                {/* NOVO: seletor de papel (sem novos imports, usando <select>) */}
+                <div className="space-y-2">
+                  <Label htmlFor="role">Tipo de Conta</Label>
+                  <select
+                    id="role"
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as Role)}
+                  >
+                    <option value="user">Usuário</option>
+                    <option value="guest">Convidado</option>
+                    <option value="partner" disabled={partnerDisabled}>
+                      {partnerLabel}
+                    </option>
+                  </select>
+                  {partnerDisabled && (
+                    <p className="text-xs text-muted-foreground">
+                      Limite de sócios atingido (4/4).
+                    </p>
+                  )}
+                </div>
+
                 <Button
                   onClick={handleSignUp}
-                  disabled={loading || !email || !password || !fullName}
+                  disabled={loading || !email || !password || !fullName || (role === "partner" && partnerDisabled)}
                   className="w-full bg-gradient-gold hover:bg-bldr-gold-dark text-primary-foreground"
                 >
                   {loading ? "Cadastrando..." : "Criar Conta"}
