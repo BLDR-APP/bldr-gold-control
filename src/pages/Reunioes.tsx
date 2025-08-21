@@ -3,36 +3,29 @@ import { Calendar as RBCalendar, dateFnsLocalizer, Views } from "react-big-calen
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { parse, format, startOfWeek, getDay } from "date-fns";
 import ptBR from "date-fns/locale/pt-BR";
-
-type Booking = {
-  id: string | number;
-  title?: string;
-  startTime: string; // ISO
-  endTime: string;   // ISO
-  location?: string;
-  meetingUrl?: string;
-  attendees?: { email: string; name?: string }[];
-  status?: string; // accepted/canceled/...
-};
+import { createClient } from "@supabase/supabase-js";
 
 type RBCEvent = {
   id: string | number;
   title: string;
   start: Date;
   end: Date;
-  resource: Booking;
+  resource: {
+    meeting_url?: string | null;
+    location?: string | null;
+    status?: string | null;
+  };
 };
 
 const locales = { "pt-BR": ptBR };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
 
-// ⚠️ Usa EDGE_BASE se existir; senão, cai para VITE_SUPABASE_URL + '/functions/v1'
-const EDGE_BASE =
-  (import.meta.env.VITE_SUPABASE_EDGE_BASE as string) ||
-  (import.meta.env.VITE_SUPABASE_URL
-    ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
-    : "");
+// Supabase client (usa as envs que você já tem)
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
+// Link do widget Cal.com
 const BOOKING_LINK = import.meta.env.VITE_CAL_BOOKING_LINK || ""; // ex.: https://cal.com/org/tipo
 
 export default function ReunioesPage() {
@@ -41,7 +34,6 @@ export default function ReunioesPage() {
   const [error, setError] = useState<string | null>(null);
   const [openBooking, setOpenBooking] = useState(false);
 
-  // range visível (RBC chama onRangeChange)
   const [range, setRange] = useState<{ start: Date; end: Date }>(() => {
     const start = startOfWeek(new Date(), { weekStartsOn: 0 });
     const end = new Date(start); end.setDate(end.getDate() + 7);
@@ -49,25 +41,30 @@ export default function ReunioesPage() {
   });
 
   const fetchBookings = useCallback(async (from: Date, to: Date) => {
-    if (!EDGE_BASE) { setError("Defina VITE_SUPABASE_EDGE_BASE ou VITE_SUPABASE_URL"); setLoading(false); return; }
     try {
       setLoading(true);
       setError(null);
-      const qs = new URLSearchParams({
-        from: new Date(from).toISOString(),
-        to: new Date(to).toISOString(),
-      }).toString();
-      const res = await fetch(`${EDGE_BASE}/cal-bookings?${qs}`, { cache: "no-store" });
-      if (!res.ok) throw new Error(`Falha ao listar bookings (${res.status})`);
-      const data = await res.json();
-      // API do Cal.com v2: { data: Booking[] } — nossa função pode repassar como { data }
-      const list: Booking[] = data.data ?? data.bookings ?? [];
-      const mapped: RBCEvent[] = list.map((b) => ({
-        id: b.id,
-        title: b.title || "Reunião",
-        start: new Date(b.startTime),
-        end: new Date(b.endTime),
-        resource: b,
+
+      // Lê da VIEW criada no SQL: cal_data.bookings
+      const { data, error } = await supabase
+        .from("cal_data.bookings")
+        .select("*")
+        .gte("start_time", from.toISOString())
+        .lte("end_time", to.toISOString())
+        .order("start_time", { ascending: true });
+
+      if (error) throw error;
+
+      const mapped: RBCEvent[] = (data || []).map((row: any) => ({
+        id: row.id,
+        title: row.title || "Reunião",
+        start: new Date(row.start_time),
+        end: new Date(row.end_time),
+        resource: {
+          meeting_url: row.meeting_url,
+          location: row.location,
+          status: row.status,
+        },
       }));
       setEvents(mapped);
     } catch (e: any) {
@@ -86,37 +83,23 @@ export default function ReunioesPage() {
     setRange({ start, end });
   }, []);
 
+  // Clique em um evento: mostra resumo e oferece abrir o link/Meet.
+  // (Se quiser cancelar pelo dashboard, reativamos depois via API quando o CALCOM_API_KEY estiver ok.)
   const onSelectEvent = useCallback(async (evt: RBCEvent) => {
-    const b = evt.resource;
+    const r = evt.resource;
     const msg = [
       `Título: ${evt.title}`,
-      `Início: ${new Date(b.startTime).toLocaleString()}`,
-      `Fim: ${new Date(b.endTime).toLocaleString()}`,
-      b.meetingUrl ? `Meet/Link: ${b.meetingUrl}` : "",
-      b.location ? `Local: ${b.location}` : "",
-      "",
-      "Ações: OK = fechar, Cancelar = excluir",
+      `Início: ${evt.start.toLocaleString()}`,
+      `Fim: ${evt.end.toLocaleString()}`,
+      r.location ? `Local: ${r.location}` : "",
+      r.meeting_url ? `Link: ${r.meeting_url}` : "",
+      r.status ? `Status: ${r.status}` : "",
     ].filter(Boolean).join("\n");
-    const confirmDelete = !window.confirm(msg);
-    if (!confirmDelete) return; // usuário clicou OK (fechar)
-    // usuário clicou em "Cancelar" no confirm → vamos excluir
-    if (!EDGE_BASE) return;
-    try {
-      setLoading(true);
-      const res = await fetch(`${EDGE_BASE}/cal-bookings/${b.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Falha ao cancelar reunião");
-      await fetchBookings(range.start, range.end);
-    } catch (e: any) {
-      setError(e?.message || "Erro ao cancelar");
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchBookings, range.start, range.end]);
-
-  const webcalHref = useMemo(() => {
-    // Se você tiver feed ICS próprio, troque aqui:
-    return "webcal://SEU_DOMINIO/api/reunioes/feed.ics";
+    alert(msg);
+    if (r.meeting_url) window.open(r.meeting_url, "_blank");
   }, []);
+
+  const webcalHref = useMemo(() => "webcal://SEU_DOMINIO/api/reunioes/feed.ics", []);
 
   return (
     <div className="p-6 space-y-6">
@@ -183,7 +166,7 @@ export default function ReunioesPage() {
               <h3 className="text-lg font-semibold">Agendar reunião</h3>
               <button onClick={async () => {
                 setOpenBooking(false);
-                // refetch após fechar (usuário pode ter concluído/cancelado no widget)
+                // refetch após fechar (o webhook já terá gravado no Supabase)
                 await fetchBookings(range.start, range.end);
               }}>Fechar</button>
             </div>
