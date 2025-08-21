@@ -8,7 +8,8 @@ import {
   FileText, 
   Settings,
   LogOut,
-  Building2
+  Building2,
+  Calendar   // ← ADICIONADO
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -35,6 +36,7 @@ const partnerItems = [
   { title: "Serviços", url: "/estoque", icon: Package },
   { title: "RH", url: "/rh", icon: Users },
   { title: "Relatórios", url: "/relatorios", icon: FileText },
+  { title: "Reuniões", url: "/reunioes", icon: Calendar }, // ← ADICIONADO
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
