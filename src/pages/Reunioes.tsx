@@ -26,7 +26,13 @@ type RBCEvent = {
 const locales = { "pt-BR": ptBR };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
 
-const EDGE_BASE = import.meta.env.VITE_SUPABASE_EDGE_BASE || ""; // ex.: https://<PROJECT>.supabase.co/functions/v1
+// ⚠️ Usa EDGE_BASE se existir; senão, cai para VITE_SUPABASE_URL + '/functions/v1'
+const EDGE_BASE =
+  (import.meta.env.VITE_SUPABASE_EDGE_BASE as string) ||
+  (import.meta.env.VITE_SUPABASE_URL
+    ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
+    : "");
+
 const BOOKING_LINK = import.meta.env.VITE_CAL_BOOKING_LINK || ""; // ex.: https://cal.com/org/tipo
 
 export default function ReunioesPage() {
@@ -43,7 +49,7 @@ export default function ReunioesPage() {
   });
 
   const fetchBookings = useCallback(async (from: Date, to: Date) => {
-    if (!EDGE_BASE) { setError("VITE_SUPABASE_EDGE_BASE não definido"); setLoading(false); return; }
+    if (!EDGE_BASE) { setError("Defina VITE_SUPABASE_EDGE_BASE ou VITE_SUPABASE_URL"); setLoading(false); return; }
     try {
       setLoading(true);
       setError(null);
