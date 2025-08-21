@@ -12,6 +12,7 @@ import { Servicos } from "@/pages/Servicos";
 import { RH } from "@/pages/RH";
 import { Relatorios } from "@/pages/Relatorios";
 import { Configuracoes } from "@/pages/Configuracoes";
+import { Reunioes } from "@/pages/Reunioes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
